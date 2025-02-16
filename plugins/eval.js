@@ -12,12 +12,12 @@ function execute(code, _this, providedVariables) {
 plugin.add('eval', {
   prefix: /^=?> /,
   command: false,
-  owner: true,
+  permission: ['rowner'],
   async onCommand(m, options) {
-    let { usedPrefix, command, noPrefix } = options
+    let { prefix, command, noPrefix } = options
     let _return
     let _syntax = ''
-    let _text = (/^=/.test(usedPrefix) ? 'return ' : '') + noPrefix
+    let _text = (/^=/.test(prefix) ? 'return ' : '') + noPrefix
     let i = 15
     let a
     try {

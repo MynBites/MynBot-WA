@@ -24,9 +24,12 @@ interface Options {
 
 type PluginData = {
   prefix?: string | RegExp | PluginData.prefix[]
-  command?: string | RegExp | PluginData.command[]
+  command?: string | RegExp | PluginData.command[] | false
   permission: Permissions[]
   priority?: number
+
+  help?: string[]
+  type?: string
 
   onCommand(this: WASocket, message?: WebMessageInfo, options?: Options): any
   onCall(this: WASocket, event: BaileysEventMap['call']): any

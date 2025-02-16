@@ -22,6 +22,8 @@ export function serialize(message, connection) {
       return connection
     },
   }
+  if (!message) return
+  if ('conn' in message || 'reply' in message) return message
   return Object.defineProperties(message || proto.WebMessageInfo.prototype, {
     ...(connection ? { conn: property, sock: property } : {}),
     id: {
@@ -244,7 +246,7 @@ export function serialize(message, connection) {
       value() {
         const q = this.quoted
         if (!q) return null
-        return serialize(this.conn, this.conn?.store.loadMessage(q.chat, q.id) || q)
+        return serialize(this.conn?.store.loadMessage(q.chat, q.id) || q, this.conn)
       },
     },
   })

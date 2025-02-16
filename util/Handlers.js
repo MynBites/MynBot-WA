@@ -16,7 +16,7 @@ export function onMessage(m) {
   for (let name in plugin.plugins) {
     const Plugin = plugin.plugins[name]
 
-    const _prefix = Plugin.prefix ? Plugin.prefix : this.prefix ? this.prefix : prefix
+    const _prefix = Plugin.prefix ? Plugin.prefix : prefix
     options.match = (
       _prefix instanceof RegExp // RegExp Mode?
         ? [[_prefix.exec(m.text), _prefix]]
@@ -32,10 +32,10 @@ export function onMessage(m) {
         ? [[new RegExp(str2Regex(_prefix)).exec(m.text), new RegExp(str2Regex(_prefix))]]
         : [[[], new RegExp()]]
     ).find((p) => p[1])
-    options.usedPrefix = (options.match[0] || '')[0]
+    options.prefix = (options.match[0] || '')[0]
 
-    if (!options.usedPrefix) continue
-    options.noPrefix = m.text.replace(options.usedPrefix, '')
+    if (!options.prefix) continue
+    options.noPrefix = m.text.replace(options.prefix, '')
     let [command, ...args] = options.noPrefix.trim().split` `.filter((v) => v)
     args = args || []
     const _args = options.noPrefix.trim().split` `.slice(1)
@@ -50,13 +50,12 @@ export function onMessage(m) {
     const isAccept =
       Plugin.command instanceof RegExp // RegExp Mode?
         ? Plugin.command.test(options.command)
-        : Array.isArray(plugin.command) // Array?
+        : Array.isArray(Plugin.command) // Array?
         ? Plugin.command
-            .map((v) => v.split(' ')[0])
-            .some((cmd) =>
-              cmd instanceof RegExp // RegExp in Array?
-                ? cmd.test(options.command)
-                : cmd == options.command,
+            .some((command) =>
+              command instanceof RegExp // RegExp in Array?
+                ? command.test(options.command)
+                : command == options.command,
             )
         : typeof Plugin.command == 'string' // String?
         ? Plugin.command.split(' ')[0] == options.command
@@ -64,6 +63,7 @@ export function onMessage(m) {
         ? Plugin.command == false
         : false
 
+    console.log(Plugin, options, isAccept)
     if (!isAccept) continue
     Plugin.onCommand?.call(this, m, options)
   }
