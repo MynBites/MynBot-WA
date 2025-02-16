@@ -1,5 +1,5 @@
 {
-  "name": "template-project",
+  "name": "@mynbites/mynbot-wa",
   "version": "0.0.1",
   "description": "Template Project",
   "type": "module",
@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/MynBites/nodejs-esm-template.git"
+    "url": "git+https://github.com/MynBites/MynBot-WA.git"
   },
   "keywords": [
     "nodejs",
@@ -19,9 +19,9 @@
   "author": "MynBites",
   "license": "GPL-3.0-or-later",
   "bugs": {
-    "url": "https://github.com/MynBites/nodejs-esm-template/issues"
+    "url": "https://github.com/MynBites/MynBot-WA/issues"
   },
-  "homepage": "https://github.com/MynBites/nodejs-esm-template#readme",
+  "homepage": "https://github.com/MynBites/MynBot-WA#readme",
   "devDependencies": {
     "mocha": "^11.1.0"
   },
