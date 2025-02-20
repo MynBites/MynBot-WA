@@ -1,5 +1,6 @@
 import { plugin } from '../index.js'
 import { prefix } from './ConfigLoader.js'
+import { format } from 'util'
 
 const str2Regex = (str) => str.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&')
 
@@ -7,7 +8,7 @@ const str2Regex = (str) => str.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&')
  * @this {import('@whiskeysockets/baileys').WASocket}
  * @param {import('../types').WebMessageInfo} m
  */
-export function onMessage(m) {
+export async function onMessage(m) {
   let options = {}
   console.log(m.sender, m.text)
   
@@ -65,7 +66,12 @@ export function onMessage(m) {
 
     console.log(Plugin, options, isAccept)
     if (!isAccept) continue
-    Plugin.onCommand?.call(this, m, options)
+    try {
+      await Plugin.onCommand?.call(this, m, options)
+    } catch (e) {
+      m.reply(format(e))
+      console.error(e)
+    }
   }
 }
 
