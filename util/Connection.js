@@ -10,6 +10,7 @@ import {
   fetchLatestWaWebVersion,
   areJidsSameUser,
 } from '@whiskeysockets/baileys'
+import qrcode from 'qrcode-terminal'
 import makeInMemoryStore from './Store.js'
 import { serialize } from './Message.js'
 import { onCall, onGroupUpdate, onMessage, onParticipantsUpdate } from './Handlers.js'
@@ -58,7 +59,7 @@ export class Connection {
   }
 
   /**
-   * @param {import('@whiskeysockets/baileys').UserFacingSocketConfig} options
+   * @param {import('@whiskeysockets/baileys').UserFacingSocketConfig | { printQRInTerminal: boolean }} options
    * @param {import('@whiskeysockets/baileys').WASocket} conn
    * @returns {import('@whiskeysockets/baileys').WASocket}
    */
@@ -69,6 +70,8 @@ export class Connection {
       P.child({ class: 'Connection' }).info(
         `using WA v${WA_VERSION.version.join('.')}, isLatest: ${WA_VERSION.isLatest}`,
       )
+    let { printQRInTerminal: __unused_omitted_object__, ..._socketOptions } = options
+    this.options = options
     this.auth = await useMultiFileAuthState(this.sessionFolder)
 
     this.conn = Object.defineProperties(
@@ -83,7 +86,6 @@ export class Connection {
         qrTimeout: 60_000,
         syncFullHistory: false,
         defaultQueryTimeoutMs: undefined,
-        printQRInTerminal: true,
         generateHighQualityLinkPreview: false,
         getMessage: (key) => this.store.loadMessage(key.remoteJid, key.id),
         cachedGroupMetadata: (jid) => this.store.fetchGroupMetadata(jid, this.conn),
@@ -109,7 +111,7 @@ export class Connection {
           }
           return message
         },
-        ...options,
+        ..._socketOptions,
       }),
       {
         store: {
@@ -219,6 +221,7 @@ export class Connection {
   async connectionUpdate({ isNewLogin, connection, lastDisconnect, qr }) {
     if (isNewLogin) return this.reload(true)
     if (connection) {
+      if (this.options.printQRInTerminal) qrcode.generate(qr, { small: true })
       this.qr = qr
       this.logger[connection == 'close' ? 'error' : 'info'](
         `[ ${this.conn.user?.id} ] Connection`,
