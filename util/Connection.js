@@ -87,7 +87,7 @@ export class Connection {
         printQRInTerminal: true,
         generateHighQualityLinkPreview: false,
         getMessage: (key) => this.store.loadMessage(key.remoteJid, key.id),
-        // cachedGroupMetadata: (jid) => this.store.fetchGroupMetadata(jid, conn),
+        cachedGroupMetadata: (jid) => this.store.fetchGroupMetadata(jid, this.conn),
         patchMessageBeforeSending: (message) => {
           const requiresPatch = Boolean(
             message.listMessage ||
@@ -144,9 +144,9 @@ export class Connection {
                 : areJidsSameUser(jid, this.user?.id)
                 ? this.user
                 : {
-                    ...store.chats.get(jid),
-                    ...store.contacts[jid],
-                    ...store.groupMetadata[jid],
+                    ...self.store.chats.get(jid),
+                    ...self.store.contacts[jid],
+                    ...self.store.groupMetadata[jid],
                   }
             let name =
               v.subject ||
@@ -174,7 +174,6 @@ export class Connection {
     this.store.bind(this.conn.ev)
     this.store.file = path.join(this.sessionFolder, 'store.json')
     if (existsSync(this.store.file)) this.store.readFromFile(this.store.file)
-    this.store.loadMessage = (jid, id) => this.store.messages[jid]?.get?.(id)
 
     this.reload()
     return conn
