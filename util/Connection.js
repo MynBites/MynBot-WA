@@ -18,7 +18,6 @@ const browser = Browsers.appropriate('Edge')
 const P = pino({
   level: 'info',
   transport: { target: 'pino-pretty' },
-  prettyPrint: { levelFirst: true, ignore: 'hostname', translateTime: true },
 })
 const SESSION_FOLDER = join(import.meta.dirname, '../db/session')
 const DB_FOLDER = join(import.meta.dirname, '../db/data')
