@@ -5,12 +5,12 @@ import {
   Browsers,
   makeWASocket,
   DisconnectReason,
-  makeInMemoryStore,
   makeCacheableSignalKeyStore,
   useMultiFileAuthState,
   fetchLatestWaWebVersion,
   areJidsSameUser,
 } from '@whiskeysockets/baileys'
+import makeInMemoryStore from './Store.js'
 import { serialize } from './Message.js'
 import { onCall, onGroupUpdate, onMessage, onParticipantsUpdate } from './Handlers.js'
 
