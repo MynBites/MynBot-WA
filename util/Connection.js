@@ -221,7 +221,7 @@ export class Connection {
   async connectionUpdate({ isNewLogin, connection, lastDisconnect, qr }) {
     if (isNewLogin) return this.reload(true)
     if (connection) {
-      if (this.options.printQRInTerminal) qrcode.generate(qr, { small: true })
+      if (qr && this.options.printQRInTerminal) qrcode.generate(qr, { small: true })
       this.qr = qr
       this.logger[connection == 'close' ? 'error' : 'info'](
         `[ ${this.conn.user?.id} ] Connection`,
