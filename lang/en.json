@@ -1,0 +1,13 @@
+{
+  "permission": {
+    "denied": "You do not have permission to use this command.\nReason: {reason}",
+    "reason": {
+      "rowner": "This command can only be used by the server owner.",
+      "owner": "This command can only be used by the bot owner.",
+      "admin": "This command can only be used by group admin.",
+      "premium": "This command can only be used by premium users.",
+      "group": "This command can only be used in groups.",
+      "private": "This command can only be used in private messages."
+    }
+  }
+}

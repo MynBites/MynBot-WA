@@ -19,15 +19,15 @@ import baileys, {
 
 const { proto } = baileys;
 const AVATAR = "https://telegra.ph/file/7ce3f080ee6d1e58f7e33.png";
-export default function makeInMemoryStore(whatsapp) {
+export default function makeInMemoryStore(config) {
 
 	// Using Map for chats only
 	let chats = new Map(),
-		  messages = {},
-		  contacts = {},
-		  groupMetadata = {},
-		  state = {},
-		  expired = [];
+		messages = {},
+		contacts = {},
+		groupMetadata = {},
+		state = {},
+		expired = [];
 
 	function loadMessage(jid, id = null) {
 		let message = null;
@@ -91,12 +91,16 @@ export default function makeInMemoryStore(whatsapp) {
 
 	function contactsUpsert(newContacts) {
 		const oldContacts = new Set(Object.keys(contacts));
-		whatsapp?.SocketConfig?.logger.info("menyinkronkan kontak terbaru...");
+		config?.SocketConfig?.logger.info("menyinkronkan kontak terbaru...");
 		for (const contact of newContacts) {
 			oldContacts.delete(contact.id);
 			contacts[contact.id] = Object.assign(contacts[contact.id] || {}, contact);
 		};
-		whatsapp?.SocketConfig?.logger.info("Berhasil menyinkronkan kontak!");
+		config?.socket?.onWhatsApp(...newContacts.map(({ id }) => id))
+			.then(lids => lids
+				.forEach(({ jid, lid }) => Object.assign(contacts[jid], { lid }))
+			)
+		config?.SocketConfig?.logger.info("Berhasil menyinkronkan kontak!");
 		return oldContacts;
 	};
 
@@ -126,8 +130,19 @@ export default function makeInMemoryStore(whatsapp) {
 	* @param {(await import("@whisketsockets/baileys")).BaileysEventEmitter} ev typically the event emitter from the socket connection
 	*/
 	function bind(ev) {
-		ev.on("connection.update", update => {
+		// ===== KODE PERBAIKAN =====
+		ev.on("connection.update", async update => {
 			Object.assign(state, update);
+			const rawId = config?.socket?.user?.id;
+			if (!rawId) {
+				// log peringatan, lalu keluar supaya tidak error
+				config?.SocketConfig?.logger.warn("socket.user.id belum tersedia, skip onWhatsApp call");
+				return;
+			}
+			const waId = rawId.split('@')[0].split(':')[0] + '@s.whatsapp.net';
+			if ((waId in contacts && 'lid' in contacts[waId]) || state.connection !== 'open') return
+			const [{ jid, lid }] = await config.socket.onWhatsApp(waId);
+			contacts[jid] = { id: jid, lid };
 		});
 
 		ev.on("messaging-history.set", ({
@@ -161,7 +176,7 @@ export default function makeInMemoryStore(whatsapp) {
 				chats.set(v.id, v);
 				insertions.push(v);
 			});
-			whatsapp?.SocketConfig?.logger.debug({ chatsAdded: insertions.length }, 'synced chats')
+			config?.SocketConfig?.logger.debug({ chatsAdded: insertions.length }, 'synced chats')
 
 			const oldContacts = contactsUpsert(newContacts)
 			if (isLatest) {
@@ -176,7 +191,7 @@ export default function makeInMemoryStore(whatsapp) {
 				messages[jid].unshift(msg)
 			}
 
-			whatsapp?.SocketConfig?.logger.debug({ deletedContacts: isLatest ? oldContacts.size : 0, newContacts }, "synced contacts");
+			config?.SocketConfig?.logger.debug({ deletedContacts: isLatest ? oldContacts.size : 0, newContacts }, "synced contacts");
 		});
 
 		ev.on("contacts.upsert", contact => {
@@ -184,11 +199,17 @@ export default function makeInMemoryStore(whatsapp) {
 		});
 
 		ev.on("contacts.update", updates => {
+			const updatedIds = []
 			for (const update of updates) {
 				if (!isJid(update.id)) continue;
 				if (!(update.id in contacts)) contacts[update.id] = {};
 				Object.assign(contacts[update.id], update);
+				updatedIds.push(update.id)
 			};
+			config?.socket?.onWhatsApp(...updatedIds)
+				.then(lids => lids
+					.forEach(({ jid, lid }) => Object.assign(contacts[jid], { lid }))
+				)
 		});
 
 		ev.on("chats.upsert", newChats => {
@@ -196,7 +217,7 @@ export default function makeInMemoryStore(whatsapp) {
 				const id = jidNormalizedUser(chat.id);
 				if (!isJid(id)) continue;
 				if (!chats.has(id)) chats.set(id, {});
-				const data = (isJidGroup(id) ? whatsapp?.db?.data?.chats[id] : whatsapp?.db?.data?.users[id] || {});
+				const data = (isJidGroup(id) ? config?.db?.data?.chats[id] : config?.db?.data?.users[id] || {});
 				const exp = (isJidGroup(id) ? data?.expired : data?.premiumTime) || 0;
 				Object.assign(chat || {}, { expired: exp });
 
@@ -215,7 +236,7 @@ export default function makeInMemoryStore(whatsapp) {
 				if (!isJid(id)) continue;
 				if (!chats.has(id)) chats.set(id, {});
 				if (update.unreadCount && chats.get(id)?.unreadCount) update.unreadCount += chats.get(id).unreadCount || 0;
-				const data = (isJidGroup(id) ? whatsapp?.db?.data?.chats[id] : whatsapp?.db?.data?.users[id] || {});
+				const data = (isJidGroup(id) ? config?.db?.data?.chats[id] : config?.db?.data?.users[id] || {});
 				const exp = (isJidGroup(id) ? data?.expired : data?.premiumTime) || 0;
 				Object.assign(update || {}, { expired: exp });
 				Object.assign(chats.get(id), update);
@@ -288,7 +309,7 @@ export default function makeInMemoryStore(whatsapp) {
 				if (update?.status) {
 					const listStatus = msg?.status;
 					if (listStatus && update.status <= listStatus) {
-						whatsapp?.SocketConfig?.logger.debug({ update, storedStatus: listStatus }, "status stored newer then update");
+						config?.SocketConfig?.logger.debug({ update, storedStatus: listStatus }, "status stored newer then update");
 						delete update.status;
 					};
 				};
@@ -297,16 +318,28 @@ export default function makeInMemoryStore(whatsapp) {
 				const index = messages[jid].findIndex(m => m.key?.id == key.id);
 				if (index == -1) continue;
 				const result = Object.assign(messages[jid][index], update);
-				if (!result) whatsapp?.SocketConfig?.logger.debug({ update }, "got update for non-existent message");
+				if (!result) config?.SocketConfig?.logger.debug({ update }, "got update for non-existent message");
 			};
 		});
 
 		ev.on("groups.update", async (updates) => {
 			for (const update of updates) {
 				const id = update?.id;
-				if (!(id in groupMetadata)) await fetchGroupMetadata(id, whatsapp?.conn);
+				if (!(id in groupMetadata))
+					await fetchGroupMetadata(id, config?.socket);
+				// Pastikan participants selalu array
+				const parts = Array.isArray(update.participants)
+					? update.participants
+					: update.participants
+						? [update.participants]
+						: [];
+				for (let { id: participantId, phoneNumber } of parts) {
+					if (!contacts[phoneNumber]) contacts[phoneNumber] = {};
+					Object.assign(contacts[phoneNumber], { id: phoneNumber, lid: participantId });
+				}
+
 				Object.assign(groupMetadata[id], update);
-			};
+			}
 		});
 
 		ev.on("group-participants.update", ({ id, participants, action }) => {
@@ -349,30 +382,67 @@ export default function makeInMemoryStore(whatsapp) {
 		});
 	};
 
+	// Tambahkan di scope atas makeInMemoryStore
+	const pendingFetches = new Map(); // Map<jid, Promise>
+
+	// Ubah fungsi fetchGroupMetadata jadi seperti ini
 	async function fetchGroupMetadata(jid, conn) {
 		if (!isJidGroup(jid)) return null;
 		if (!(jid in groupMetadata)) groupMetadata[jid] = { id: jid };
-		const isRequiredToUpdate = !groupMetadata[jid]?.metadata || Date.now() - (groupMetadata[jid]?.lastfetch || 0) > 5 * 60 * 1000;
-		if (isRequiredToUpdate) {
-			const GroupMetadata = (conn && conn !== null && (typeof conn === "object" && "groupMetadata" in conn && conn.groupMetadata ? conn.groupMetadata : typeof conn === "function" ? conn : null));
-			if (!GroupMetadata || GroupMetadata == null) return GroupMetadata;
-			const metadata = typeof GroupMetadata === "function" && await GroupMetadata(jid);
-			const participants = metadata !== null && metadata.participants ? metadata.participants : [];
-			const user = conn && conn !== null && typeof conn === "object" && "user" in conn && conn.user ? conn.user : false;
-			const botJid = user && "jid" in user && user?.jid ? user.jid : user ? jidNormalizedUser(user?.id) : null;
-			const isBotAdmin = participants.find(({ id }) => id == botJid)?.admin?.includes("admin") || false;
-			const link = isBotAdmin ? "https://chat.whatsapp.com/" + await conn.groupInviteCode(metadata.id) : null;
-			if (metadata)
-				Object.assign(groupMetadata[jid], {
-					...metadata,
-					link,
-					lastfetch: Date.now(),
-					expired: whatsapp?.db?.data?.chats?.[jid]?.expired ?? 0
-				});
-		};
 
-		return groupMetadata[jid];
-	};
+		// 1) Kalau ada fetch untuk jid ini yang masih pending, tunggu itu
+		if (pendingFetches.has(jid)) {
+			return pendingFetches.get(jid);
+		}
+
+		// 2) Hitung interval cache (misal 5 menit)
+		const CACHE_INTERVAL = 5 * 60 * 1000;
+		const needsUpdate = !groupMetadata[jid]?.metadata
+			|| Date.now() - (groupMetadata[jid]?.lastfetch || 0) > CACHE_INTERVAL;
+
+		// 3) Jika tidak perlu update, langsung return cache
+		if (!needsUpdate) {
+			return groupMetadata[jid];
+		}
+
+		// 4) Buat sebuah promise dan simpan di pendingFetches
+		const p = (async () => {
+			try {
+				// panggil API (conn.groupMetadata)
+				const apiFn = conn.groupMetadata;
+				const metadata = await apiFn(jid);
+				if (metadata) {
+					Object.assign(groupMetadata[jid], {
+						...metadata,
+						lastfetch: Date.now(),
+						expired: config?.db?.data?.chats?.[jid]?.expired ?? 0
+					});
+					for (let { id, phoneNumber } of metadata.participants) {
+						if (phoneNumber) {
+							if (!contacts[phoneNumber]) contacts[phoneNumber] = {}
+							Object.assign(contacts[phoneNumber], { id: phoneNumber, lid: id })
+						}
+					}
+				}
+			} catch (err) {
+				// jika kena rate limit (429) atau error server (500), log & gunakan cache
+				if (err?.data === 429 || err?.output?.statusCode === 500) {
+					config?.SocketConfig?.logger.warn(
+						`Rate limit saat fetch metadata ${jid}, pakai cache.`
+					);
+				} else {
+					// error lain diteruskan
+					throw err;
+				}
+			} finally {
+				// bersihkan pending
+				pendingFetches.delete(jid);
+			}
+			return groupMetadata[jid];
+		})();
+		pendingFetches.set(jid, p);
+		return p;
+	}
 
 	function toJSON() {
 		// Convert Map to object for JSON serialization
@@ -454,12 +524,12 @@ export default function makeInMemoryStore(whatsapp) {
 		},
 		readFromFile: (path) => {
 			if (existsSync(path)) {
-				whatsapp?.SocketConfig?.logger.debug({ path }, "reading from file");
+				config?.SocketConfig?.logger.debug({ path }, "reading from file");
 				const jsonStr = readFileSync(path, "utf-8");
 				const json = JSON.parse(jsonStr);
 				fromJSON(json);
 			} else
-				whatsapp?.logger?.error({ path }, "path does exist");
+				config?.logger?.error({ path }, "path does exist");
 		}
 	};
 };

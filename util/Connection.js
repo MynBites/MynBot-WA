@@ -77,7 +77,7 @@ export class Connection {
     this.conn = Object.defineProperties(
       makeWASocket({
         logger: this.logger,
-        // version: WA_VERSION.version,
+        version: WA_VERSION.version,
         browser,
         auth: {
           ...this.auth.state,
@@ -198,7 +198,6 @@ export class Connection {
         onMessage.call(this.conn, m)
       }
     })
-    console.log(this.conn.ev)
     this.conn.ev.on('call', onCall.bind(this.conn))
     this.conn.ev.on('group-participants.update', onParticipantsUpdate.bind(this.conn))
     this.conn.ev.on('groups.update', onGroupUpdate.bind(this.conn))
@@ -219,9 +218,10 @@ export class Connection {
    * @param {import('@whiskeysockets/baileys').BaileysEventMap['connection.update']}
    */
   async connectionUpdate({ isNewLogin, connection, lastDisconnect, qr }) {
+    // console.log({ isNewLogin, connection, lastDisconnect, qr })
     if (isNewLogin) return this.reload(true)
+    if (qr && this.options.printQRInTerminal) qrcode.generate(qr, { small: true })
     if (connection) {
-      if (qr && this.options.printQRInTerminal) qrcode.generate(qr, { small: true })
       this.qr = qr
       this.logger[connection == 'close' ? 'error' : 'info'](
         `[ ${this.conn.user?.id} ] Connection`,

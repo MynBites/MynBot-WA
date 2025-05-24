@@ -8,7 +8,10 @@ import {
   MiscMessageGenerationOptions,
 } from '@whiskeysockets/baileys'
 
-type CustomPermission = (perm: Permissions[], options: Options) => Boolean
+type CustomPermission = (
+  this: ThisParameterType<PluginData['onCommand']>,
+  ...args: Parameters<PluginData['onCommand']>
+) => boolean
 type Permissions = 'rowner' | 'owner' | 'admin' | 'botadmin' | 'group' | 'private' | 'announcement' | 'story' | 'reply' | CustomPermission
 
 interface Options {

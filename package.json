@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "@mynbites/plugin-manager": "github:MynBites/plugin-manager",
-    "@whiskeysockets/baileys": "github:WhiskeySockets/Baileys",
+    "@whiskeysockets/baileys": "github:Nurutomo/BaileysPatchFix#patch-1",
     "got": "^14.4.6",
     "pino-pretty": "^13.0.0",
     "qrcode-terminal": "^0.12.0",

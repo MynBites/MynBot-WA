@@ -1,0 +1,13 @@
+{
+  "permission": {
+    "denied": "Anda tidak memiliki izin untuk mengakses perintah ini.\nAlasan: {reason}",
+    "reason": {
+      "rowner": "Perintah ini hanya dapat digunakan oleh pemilik server.",
+      "owner": "Perintah ini hanya dapat digunakan oleh pemilik bot.",
+      "admin": "Perintah ini hanya dapat digunakan oleh admin grup.",
+      "premium": "Perintah ini hanya dapat digunakan oleh pengguna premium.",
+      "group": "Perintah ini hanya dapat digunakan di grup.",
+      "private": "Perintah ini hanya dapat digunakan di pesan pribadi."
+    }
+  }
+}
