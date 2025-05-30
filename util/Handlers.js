@@ -1,9 +1,9 @@
-import { areJidsSameUser } from '@whiskeysockets/baileys'
 import { plugin } from '../index.js'
-import { prefix, owner } from './ConfigLoader.js'
+import { prefix } from './ConfigLoader.js'
 import { format } from 'util'
 import Permissions from './Permissions.js'
 import Lang from './Language.js'
+import ChatLog from './ChatLog.js'
 
 const str2Regex = (str) => str.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&')
 
@@ -12,12 +12,11 @@ const str2Regex = (str) => str.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&')
  * @param {import('../types').WebMessageInfo} m
  */
 export async function onMessage(m) {
-  let options = {}
-  console.log(m.sender, m.text)
+  let options = { sock: this, conn: this }
 
   if (m.isBaileys) return
 
-  options.groupMetadata = m.isGroup ? await this.groupMetadata(m.chat) : {}
+  options.groupMetadata = m.isGroup ? await this.store?.fetchGroupMetadata?.(m.chat, this) : {}
   options.participants = m.isGroup ? options.groupMetadata.participants : []
 
   for (let name in plugin.plugins) {
@@ -88,15 +87,16 @@ export async function onMessage(m) {
       continue
     }
     try {
-      m.react('⏳')
+      await m.react('⏳')
       await Plugin.onCommand?.call(this, m, options)
-      m.react('✅')
+      await m.react('✅')
     } catch (e) {
-      m.react('❌')
+      await m.react('❌')
       m.reply(format(e))
       console.error(e)
     }
   }
+  ChatLog.call(this, m)
 }
 
 /**

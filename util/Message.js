@@ -1,4 +1,6 @@
-import baileys, { isJidGroup, getContentType, extractMessageContent } from '@whiskeysockets/baileys'
+import baileys, { isJidGroup, getContentType, extractMessageContent, isLidUser, jidNormalizedUser } from '@whiskeysockets/baileys'
+import { IDENTIFIER } from './Connection.js'
+import { get } from 'http'
 const { proto } = baileys
 
 // https://github.com/Nurutomo/wabot-aq/issues/490
@@ -16,7 +18,7 @@ const MediaType = [
  * @param {import('@whiskeysockets/baileys').WASocket} connection
  * @returns {import('..').WebMessageInfo}
  */
-export function serialize(message, connection) {
+export function serialize(message, connection, getJidFromLid) {
   let property = {
     get() {
       return connection
@@ -24,8 +26,25 @@ export function serialize(message, connection) {
   }
   if (!message) return
   if ('conn' in message || 'reply' in message) return message
+  let sender = (message.key?.fromMe && message.conn?.user.id) ||
+    message.participant ||
+    message.key.participant ||
+    message.chat ||
+    ''
+  if (getJidFromLid && isLidUser(sender)) {
+    getJidFromLid(sender).then((jid) => {
+      if (jid) {
+        sender = jid
+      }
+    }).catch(() => {})
+  }
   return Object.defineProperties(message || proto.WebMessageInfo.prototype, {
     ...(connection ? { conn: property, sock: property } : {}),
+    _sender: {
+      get() {
+        return getJidFromLid ? sender : ''
+      }
+    },
     id: {
       get() {
         return this.key?.id
@@ -33,7 +52,7 @@ export function serialize(message, connection) {
     },
     isBaileys: {
       get() {
-        return this.id?.startsWith('3EB0') && this.id?.length === 40 && this.id?.endsWith('A1EE')
+        return this.id?.startsWith('3EB0') && this.id?.length === 40 && this.id?.endsWith(IDENTIFIER)
       },
     },
     chat: {
@@ -54,7 +73,8 @@ export function serialize(message, connection) {
     },
     sender: {
       get() {
-        return (
+        return jidNormalizedUser(
+          this._sender ||
           (this.key?.fromMe && this.conn?.user.id) ||
           this.participant ||
           this.key.participant ||
@@ -84,16 +104,16 @@ export function serialize(message, connection) {
           if (!type) return null
           const msg = (message?.message || message)[type]
           const data = findMsg(msg) || msg
-          if (msg?.editedMessage && data?.caption) {
-            const msgStore =
-              this.conn.store.loadMessage(msg.key.remoteJid, msg.key.id) ||
-              this.conn.store.loadMessage(msg.key.id)
-            if (msgStore) {
-              const msg2 = proto.WebMessageInfo.fromObject(msgStore)
-              msg2.msg.caption = data.caption
-              return msg2.msg
-            }
-          }
+          // if (msg?.editedMessage && data?.caption) {
+          //   const msgStore =
+          //     this.conn.store.loadMessage(msg.key.remoteJid, msg.key.id) ||
+          //     this.conn.store.loadMessage(msg.key.id)
+          //   if (msgStore) {
+          //     const msg2 = proto.WebMessageInfo.fromObject(msgStore)
+          //     msg2.msg.caption = data.caption
+          //     return msg2.msg
+          //   }
+          // }
           return data
         }
         return findMsg(extractMessageContent(this.message))
@@ -128,16 +148,16 @@ export function serialize(message, connection) {
       get() {
         const msg = this.msg
         const text =
-          (typeof msg === 'string' ? msg : msg?.text) || msg?.caption || msg?.contentText || ''
+          (typeof msg === 'string' ? msg : msg?.text) || msg?.caption || msg?.contentText || (msg?.options && msg?.name) || ''
         return typeof this._text === 'string'
           ? this._text
           : '' ||
-              (typeof text === 'string'
-                ? text
-                : text?.selectedDisplayText ||
-                  text?.hydratedTemplate?.hydratedContentText ||
-                  text) ||
-              ''
+          (typeof text === 'string'
+            ? text
+            : text?.selectedDisplayText ||
+            text?.hydratedTemplate?.hydratedContentText ||
+            text) ||
+          ''
       },
       set(str) {
         return (this._text = str)
@@ -153,8 +173,8 @@ export function serialize(message, connection) {
       enumerable: true,
     },
     name: {
-      get() {
-        return (!nullish(this.pushName) && this.pushName) || this.conn?.getName(this.sender)
+      async get() {
+        return (!nullish(this.pushName) && this.pushName) || await this.conn?.getName(this.sender)
       },
       enumerable: true,
     },
@@ -239,14 +259,15 @@ export function serialize(message, connection) {
             message: contextInfo.quotedMessage,
           }),
           this.conn,
+          getJidFromLid
         )
       },
     },
     getQuotedObj: {
-      value() {
+      async value() {
         const q = this.quoted
         if (!q) return null
-        return serialize(this.conn?.store.loadMessage(q.chat, q.id) || q, this.conn)
+        return serialize(await this.conn?.store.loadMessage(q.chat, q.id) || q, this.conn, getJidFromLid)
       },
     },
   })

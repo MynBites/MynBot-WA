@@ -1,11 +1,6 @@
 /* By Caliph - Modified to use Map for chats only */
 /* Modified by Nurutomo */
 /* eslint-disable no-unused-vars */
-import {
-	existsSync,
-	readFileSync,
-	writeFileSync
-} from "fs";
 
 import baileys, {
 	isJidGroup,
@@ -13,58 +8,45 @@ import baileys, {
 	getContentType,
 	jidNormalizedUser,
 	WAMessageStubType,
-	updateMessageWithReceipt,
-	updateMessageWithReaction
-} from "@whiskeysockets/baileys";
+} from "@whiskeysockets/baileys"
 
-const { proto } = baileys;
-const AVATAR = "https://telegra.ph/file/7ce3f080ee6d1e58f7e33.png";
+const { proto } = baileys
+const AVATAR = "https://telegra.ph/file/7ce3f080ee6d1e58f7e33.png"
+
 export default function makeInMemoryStore(config) {
+	/** @type {import('mongodb').Db} */
+	const db = config.db
 
+	const chats = db.collection("chats")
+	const messages = db.collection("messages")
+	const contacts = db.collection("contacts")
+	const groupMetadata = db.collection("groupMetadata")
+	const ephemeralDuration = {}
 	// Using Map for chats only
-	let chats = new Map(),
-		messages = {},
-		contacts = {},
-		groupMetadata = {},
-		state = {},
-		expired = [];
+	let state = {},
+		expired = []
 
-	function loadMessage(jid, id = null) {
-		let message = null;
+	async function loadMessage(jid, id = null) {
 		if (jid && !id) {
 			id = jid;
-			const messageFind = Object.entries(messages)
-				.find(([_, msgs]) => msgs.find(m => m.key?.id == id));
-			message = messageFind?.[1]?.find?.(m => m?.key?.id == id);
-		} else {
-			jid = jidNormalizedUser(jid);
-			if (!(jid in messages)) return null;
-			message = messages[jid]?.find?.(m => m?.key?.id == id);
-		};
-		return message;
-	};
+			jid = undefined
+		}
+		const query = { id }
+		if (jid) query.jid = jid
+		const message = await messages.findOne(query)
 
-	async function handleExpired() {
-		const now = new Date() * 1;
-		for (const [id, chatData] of chats.entries()) {
-			if (!chatData || typeof chatData !== "object") continue;
-			if (!("expired" in chatData)) continue;
-			if (!expired.includes(id) && chatData.expired != 0 && chatData.expired !== undefined && now >= chatData.expired) {
-				expired.push(id);
-			};
-		};
-		return expired;
-	};
+		return message;
+	}
 
 	function isJid(id) {
 		return typeof id !== "undefined" && !isJidBroadcast(id);
 	};
 
-	function getExpiration(jid) {
-		if (!isJid(jid)) return null;
-		const expirationGroup = groupMetadata[jid]?.ephemeralDuration;
-		const expirationChat = chats.get(jid)?.ephemeralExpiration ?? chats.get(jid)?.ephemeralDuration ?? contacts[jid]?.ephemeralExpiration ?? contacts[jid]?.ephemeralDuration;
-		return (expirationGroup || expirationChat);
+	async function getExpiration(id) {
+		if (!isJid(id)) return null
+		
+		let result = (await groupMetadata.findOne({ id }) || await chats.findOne({ id })) || {};
+		return result.ephemeralDuration || result.ephemeralExpiration;
 	};
 
 	function getExpirationOfMessage(m) {
@@ -87,40 +69,36 @@ export default function makeInMemoryStore(config) {
 		};
 
 		return expiration;
-	};
+	}
 
-	function contactsUpsert(newContacts) {
-		const oldContacts = new Set(Object.keys(contacts));
+	async function contactsUpsert(newContacts) {
+		const oldContacts = (await contacts.find({ id: { $not: { $in: newContacts.map(c => c.id) } } }).toArray() || []).map(c => c.id);
 		config?.SocketConfig?.logger.info("menyinkronkan kontak terbaru...");
+		const ops = []
 		for (const contact of newContacts) {
-			oldContacts.delete(contact.id);
-			contacts[contact.id] = Object.assign(contacts[contact.id] || {}, contact);
+			ops.push({
+				updateOne: {
+					filter: { id: contact.id },
+					update: { $set: contact },
+					upsert: true
+				}
+			})
 		};
-		config?.socket?.onWhatsApp(...newContacts.map(({ id }) => id))
-			.then(lids => lids
-				.forEach(({ jid, lid }) => Object.assign(contacts[jid], { lid }))
-			)
+		let lids = await config?.socket?.onWhatsApp(...newContacts.map(({ id }) => id)) || []
+		for (const { jid, lid } of lids) {
+			ops.push({
+				updateOne: {
+					filter: { id: jid },
+					update: { $set: { id: jid, lid } },
+					upsert: true
+				}
+			})
+		}
+		if (ops.length) {
+			await contacts.bulkWrite(ops)
+		}
 		config?.SocketConfig?.logger.info("Berhasil menyinkronkan kontak!");
 		return oldContacts;
-	};
-
-	function upsertMessage(id, message, type = "append") {
-		// @ts-ignore
-		id = jidNormalizedUser(id) || id;
-		if (!(id in messages)) messages[id] = [];
-
-		// Clean Message
-		// delete message.message?.senderKeyDistributionMessage;
-
-		const msg = loadMessage(id, message.key?.id);
-		if (msg)
-			Object.assign(msg, message);
-		else {
-			if (type == "append")
-				messages[id].push(message);
-			else
-				messages[id].splice(0, 0, message);
-		};
 	};
 
 	/**
@@ -142,10 +120,10 @@ export default function makeInMemoryStore(config) {
 			const waId = rawId.split('@')[0].split(':')[0] + '@s.whatsapp.net';
 			if ((waId in contacts && 'lid' in contacts[waId]) || state.connection !== 'open') return
 			const [{ jid, lid }] = await config.socket.onWhatsApp(waId);
-			contacts[jid] = { id: jid, lid };
+			await contacts.updateOne({ id: jid }, { $set: { id: jid, lid } }, { upsert: true })
 		});
 
-		ev.on("messaging-history.set", ({
+		ev.on("messaging-history.set", async ({
 			chats: newChats,
 			contacts: newContacts,
 			messages: newMessages,
@@ -158,175 +136,200 @@ export default function makeInMemoryStore(config) {
 			}
 
 			if (isLatest) {
-				chats.clear()
-
-				for (const id in messages) {
-					delete messages[id]
-				}
+				await chats.deleteMany({})
+				await messages.deleteMany({})
 			}
 
-			const insertions = [];
-			newChats.forEach(v => {
-				if (!v)
-					return;
-				// if ID is present
-				const presentValue = chats.has(v.id);
-				if (presentValue)
-					return;
-				chats.set(v.id, v);
-				insertions.push(v);
-			});
-			config?.SocketConfig?.logger.debug({ chatsAdded: insertions.length }, 'synced chats')
+			const insertions = await chats.countDocuments({ id: { $not: { $in: newChats.map(c => c.id) } } })
+			let ops = newChats.map(chat => ({
+				updateOne: {
+					filter: { id: chat.id },
+					update: { $set: chat },
+					upsert: true
+				}
+			}));
+			config?.SocketConfig?.logger.debug({ chatsAdded: insertions }, 'synced chats')
 
-			const oldContacts = contactsUpsert(newContacts)
+			const oldContacts = await contactsUpsert(newContacts)
 			if (isLatest) {
-				for (const jid of oldContacts) {
-					delete contacts[jid]
+				ops = [...ops, ...oldContacts.map(id => ({ deleteOne: { filter: { id } } }))]
+			}
+
+			ops = [...ops, ...newMessages.map(msg => ({
+				updateOne: {
+					filter: { id: msg.key.id, jid: msg.key.remoteJid },
+					update: { $set: msg },
+					upsert: true
 				}
-			}
-
-			for (const msg of newMessages) {
-				const jid = msg.key.remoteJid
-				if (!messages[jid]) messages[jid] = []
-				messages[jid].unshift(msg)
-			}
-
-			config?.SocketConfig?.logger.debug({ deletedContacts: isLatest ? oldContacts.size : 0, newContacts }, "synced contacts");
+			}))]
+			if (ops.length) await messages.bulkWrite(ops);
+			config?.SocketConfig?.logger.debug({ deletedContacts: isLatest ? oldContacts.length : 0, newContacts }, "synced contacts");
 		});
 
 		ev.on("contacts.upsert", contact => {
 			contactsUpsert(contact);
 		});
 
-		ev.on("contacts.update", updates => {
-			const updatedIds = []
-			for (const update of updates) {
-				if (!isJid(update.id)) continue;
-				if (!(update.id in contacts)) contacts[update.id] = {};
-				Object.assign(contacts[update.id], update);
-				updatedIds.push(update.id)
-			};
-			config?.socket?.onWhatsApp(...updatedIds)
-				.then(lids => lids
-					.forEach(({ jid, lid }) => Object.assign(contacts[jid], { lid }))
-				)
+		ev.on("contacts.update", async updates => {
+
+			const updatedIds = updates.filter(({ id }) => isJid(id));
+			if (updatedIds.length) await chats.bulkWrite(updatedIds.map(update => ({
+				updateOne: {
+					filter: { id: update.id },
+					update: { $set: update },
+					upsert: true
+				}
+			})))
+
+			let ops = []
+			let lids = await config?.socket?.onWhatsApp(...updatedIds.map(({ id }) => id)) || []
+			for (const { jid, lid } of lids) {
+				ops.push({
+					updateOne: {
+						filter: { id: jid },
+						update: { $set: { id: jid, lid } },
+						upsert: true
+					}
+				})
+			}
+			if (ops.length) await contacts.bulkWrite(ops)
 		});
 
-		ev.on("chats.upsert", newChats => {
-			for (const chat of newChats) {
-				const id = jidNormalizedUser(chat.id);
-				if (!isJid(id)) continue;
-				if (!chats.has(id)) chats.set(id, {});
-				const data = (isJidGroup(id) ? config?.db?.data?.chats[id] : config?.db?.data?.users[id] || {});
-				const exp = (isJidGroup(id) ? data?.expired : data?.premiumTime) || 0;
-				Object.assign(chat || {}, { expired: exp });
-
-				Object.assign(chats.get(id), chat);
-				if ("ephemeralExpiration" in chat && !isJidGroup(id)) {
-					if (!(id in contacts)) contacts[id] = {};
-					Object.assign(contacts[id], { ephemeralExpiration: chat.ephemeralExpiration });
-				};
-				if (!isJidGroup(id)) Object.assign(chats.get(id), { id, isPrivate: true });
-			};
+		ev.on("chats.upsert", async newChats => {
+			const ops = newChats.filter(chat => isJid(jidNormalizedUser(chat.id))).map(chat => ({
+				updateOne: {
+					filter: { id: jidNormalizedUser(chat.id) },
+					update: { $set: chat },
+					upsert: true
+				}
+			}));
+			if (ops.length) await chats.bulkWrite(ops);
 		});
 
-		ev.on("chats.update", updates => {
-			for (const update of updates) {
-				const id = jidNormalizedUser(update.id);
-				if (!isJid(id)) continue;
-				if (!chats.has(id)) chats.set(id, {});
-				if (update.unreadCount && chats.get(id)?.unreadCount) update.unreadCount += chats.get(id).unreadCount || 0;
-				const data = (isJidGroup(id) ? config?.db?.data?.chats[id] : config?.db?.data?.users[id] || {});
-				const exp = (isJidGroup(id) ? data?.expired : data?.premiumTime) || 0;
-				Object.assign(update || {}, { expired: exp });
-				Object.assign(chats.get(id), update);
-				if ("ephemeralExpiration" in update && !isJidGroup(id)) {
-					if (!(id in contacts)) contacts[id] = {};
-					Object.assign(contacts[id], { ephemeralExpiration: update.ephemeralExpiration });
-				};
-				if (!isJidGroup(id)) Object.assign(chats.get(id), { id, isPrivate: true });
-			};
+		ev.on("chats.update", async updates => {
+			const unread = {}
+			updates.forEach(update => {
+				let id = jidNormalizedUser(update.id);
+				if (update.unreadCount && isJid(id)) {
+					if (!unread[id]) unread[id] = 0;
+					unread[id] += update.unreadCount;
+				}
+			})
+			const ops = []
+			for (const id in unread) {
+				const count = unread[id]
+				ops.push({
+					updateOne: {
+						filter: { id },
+						update: { $set: { id }, $inc: { unreadCount: count } },
+						upsert: true
+					}
+				});
+			}
+			if (ops.length) await chats.bulkWrite(ops);
 		});
 
-		ev.on("chats.delete", deletions => {
+		ev.on("chats.delete", async deletions => {
+			await chats.deleteMany({ id: { $in: deletions } });
 			for (const id of deletions) {
 				console.log("id in chats.delete store system: ", id);
-				if (id in messages) delete messages[id];
-				if (chats.has(id)) chats.delete(id);
 			};
 		});
 
-		ev.on('presence.update', ({ id, presences: update }) => {
+		ev.on('presence.update', async ({ id, presences: update }) => {
 			id = jidNormalizedUser(id) || id;
 			if (!isJid(id)) return;
-			if (!chats.has(id)) chats.set(id, {});
-			Object.assign(chats.get(id), update);
+			await chats.updateOne({ id }, {
+				$set: {
+					presences: update
+				}
+			}, { upsert: true });
 		});
 
-		ev.on("messages.upsert", ({ messages: newMessages, type }) => {
+		ev.on("messages.upsert", async ({ messages: newMessages, type }) => {
 			switch (type) {
 				case "append":
 				case "notify":
+					const forEmit = []
+					const ops = []
+					const ops2 = []
 					for (const msg of newMessages) {
 						const jid = jidNormalizedUser(msg.key?.remoteJid);
 						if (!jid) continue;
-						if (jid && (isJidBroadcast(jid) || msg.broadcast)) {
-							continue;
-						};
 						if (msg.messageStubTybe == WAMessageStubType.CIPHERTEXT)
 							continue;
 
-						upsertMessage(jid, proto.WebMessageInfo.fromObject(msg));
+						let message = proto.WebMessageInfo.fromObject(msg)
+						// Clean Message
+						// delete message.message?.senderKeyDistributionMessage;
+
+						ops.push({
+							updateOne: {
+								filter: { id: msg.key?.id, jid },
+								update: { $set: message },
+								upsert: true
+							}
+						});
+
 						if (type == "notify") {
 							let exp = getExpirationOfMessage(msg);
-							if (chats.has(jid) && chats.get(jid) && !chats.get(jid).ephemeralExpiration) {
-								if (exp) chats.get(jid).ephemeralExpiration = exp;
-							};
-							if (!chats.has(jid)) {
-								ev.emit("chats.upsert", [{
-									id: jid,
-									conversationTimestamp: msg.messageTimestamp,
-									unreadCount: 1,
-									notify: msg.pushName || msg.verifiedBizName,
-									...(exp ? { ephemeralExpiration: exp } : {})
-								}]);
-							};
+							forEmit.push({
+								id: jid,
+								conversationTimestamp: msg.messageTimestamp,
+								unreadCount: message?.unreadCount || 1,
+								notify: msg.pushName || msg.verifiedBizName,
+								...(exp ? { ephemeralExpiration: exp } : {})
+							})
+							if (exp) ops2.push({
+								updateOne: {
+									filter: { id: jid },
+									update: {
+										$set: {
+											id: jid,
+											unreadCount: message?.unreadCount || 1,
+											ephemeralExpiration: exp
+										}
+									},
+									upsert: true
+								}
+							})
 						};
 					};
-
+					if (ops.length) await messages.bulkWrite(ops)
+					const exists = await chats.find({ id: { $not: { $in: forEmit.map(m => m.id) } } }).toArray()
+					ev.emit("chats.upsert", exists.map(chat => forEmit.find(m => m.id == chat.id)).filter(m => m))
+					if (ops2.length) await chats.bulkWrite(ops2)
 					break;
 			};
 		});
 
-		ev.on("messages.update", updates => {
-			for (const { key, update } of updates) {
+		ev.on("messages.update", async updates => {
+			const ops = updates.filter(({ key, update }) => isJid(jidNormalizedUser(key?.remoteJid)) && update?.messageStubTybe != WAMessageStubType.REVOKE).map(({ key, update }) => {
 				const jid = jidNormalizedUser(key?.remoteJid);
-				if (!isJid(jid)) continue;
-				if (!(jid in messages)) messages[jid] = [];
-				let msg = loadMessage(jid, key?.id);
-				if (!msg) continue;
-				if (update?.messageStubType == WAMessageStubType.REVOKE) continue;
-				if (update?.status) {
-					const listStatus = msg?.status;
-					if (listStatus && update.status <= listStatus) {
-						config?.SocketConfig?.logger.debug({ update, storedStatus: listStatus }, "status stored newer then update");
-						delete update.status;
-					};
+				// if (update?.status) {
+				// 	const listStatus = msg?.status;
+				// 	if (listStatus && update.status <= listStatus) {
+				// 		config?.SocketConfig?.logger.debug({ update, storedStatus: listStatus }, "status stored newer then update");
+				// 		delete update.status;
+				// 	};
+				// };
+				return {
+					updateOne: {
+						filter: { id: key.id, jid },
+						update: { $set: update },
+						upsert: true
+					}
 				};
-
-				Object.assign(msg, update);
-				const index = messages[jid].findIndex(m => m.key?.id == key.id);
-				if (index == -1) continue;
-				const result = Object.assign(messages[jid][index], update);
-				if (!result) config?.SocketConfig?.logger.debug({ update }, "got update for non-existent message");
-			};
+			})
+			if (ops.length) await messages.bulkWrite(ops);
 		});
 
 		ev.on("groups.update", async (updates) => {
+			const ops = []
+			const ops2 = []
 			for (const update of updates) {
 				const id = update?.id;
-				if (!(id in groupMetadata))
-					await fetchGroupMetadata(id, config?.socket);
+				await fetchGroupMetadata(id, config?.socket);
 				// Pastikan participants selalu array
 				const parts = Array.isArray(update.participants)
 					? update.participants
@@ -334,75 +337,106 @@ export default function makeInMemoryStore(config) {
 						? [update.participants]
 						: [];
 				for (let { id: participantId, phoneNumber } of parts) {
-					if (!contacts[phoneNumber]) contacts[phoneNumber] = {};
-					Object.assign(contacts[phoneNumber], { id: phoneNumber, lid: participantId });
+					ops.push({
+						updateOne: {
+							filter: { id: phoneNumber },
+							update: { $set: { id: phoneNumber, lid: participantId } },
+							upsert: true
+						}
+					})
 				}
 
-				Object.assign(groupMetadata[id], update);
+				ops2.push({
+					updateOne: {
+						filter: { id },
+						update: { $set: update },
+						upsert: true
+					}
+				})
+			}
+			if (ops.length) await contacts.bulkWrite(ops);
+			if (ops2.length) await groupMetadata.bulkWrite(ops2);
+		});
+
+		ev.on("group-participants.update", async ({ id, participants, action }) => {
+			switch (action) {
+				case "add":
+					await groupMetadata.updateOne({ id }, {
+						$push: {
+							participants: { $each: participants.map(id => ({ id, admin: null })) }
+						}
+					});
+					break;
+				case "demote":
+				case "promote":
+					await groupMetadata.updateOne(
+						{ id, "participants.id": { $in: participants } },
+						{
+							$set: {
+								"participants.$[participant].admin": action == 'promote' ? "admin" : null
+							}
+						}
+						,
+						{
+							arrayFilters: [{ "participant.id": { $in: participants } }]
+						}
+					)
+					break;
+				case "remove":
+					await groupMetadata.updateOne({ id, "participants.id": { $in: participants } }, {
+						$pull: {
+							participants: { id: { $in: participants } }
+						}
+					})
+					break
 			}
 		});
 
-		ev.on("group-participants.update", ({ id, participants, action }) => {
-			const metadata = groupMetadata[id];
-			if (metadata) {
-				switch (action) {
-					case "add":
-						metadata.participants.push(...participants.map(id => ({ id, admin: null })));
-						break;
-					case "demote":
-					case "promote":
-						for (const participant of metadata.participants) {
-							if (participants.includes(participant.id)) {
-								participant.admin = action === "promote" ? (participant.id === metadata.owner || metadata.id?.includes?.("-") && metadata.id.split("-")[0] + "@s.whatsapp.net") ? "superadmin" : "admin" : null;
-							};
-						};
-
-						break;
-					case "remove":
-						metadata.participants = metadata.participants.filter(p => !participants.includes(p.id));
-						break;
-				};
-
-				Object.assign(groupMetadata[id], metadata);
-			};
+		ev.on("message-receipt.update", async updates => {
+			const ops = updates.map(({ key, receipt }) => ({
+				updateOne: {
+					filter: { id: key?.id, jid: key?.remoteJid },
+					update: { $push: { receipts: receipt } },
+					upsert: true
+				}
+			}))
+			if (ops.length) await messages.bulkWrite(ops)
 		});
 
-		ev.on("message-receipt.update", updates => {
-			for (const { key, receipt } of updates) {
-				const msg = loadMessage(key?.remoteJid, key?.id);
-				if (msg) updateMessageWithReceipt(msg, receipt);
-			};
-		});
-
-		ev.on("messages.reaction", updates => {
-			for (const { key, reaction } of updates) {
-				const msg = loadMessage(key?.remoteJid, key?.id);
-				if (msg) updateMessageWithReaction(msg, reaction);
-			};
-		});
-	};
+		ev.on("messages.reaction", async updates => {
+			const ops = updates.map(({ key, reaction }) => ({
+				updateOne: {
+					filter: { id: key?.id, jid: key?.remoteJid },
+					update: { $push: { reactions: reaction } },
+					upsert: true
+				}
+			}))
+			if (ops.length) await messages.bulkWrite(ops)
+		})
+	}
 
 	// Tambahkan di scope atas makeInMemoryStore
 	const pendingFetches = new Map(); // Map<jid, Promise>
 
 	// Ubah fungsi fetchGroupMetadata jadi seperti ini
-	async function fetchGroupMetadata(jid, conn) {
-		if (!isJidGroup(jid)) return null;
-		if (!(jid in groupMetadata)) groupMetadata[jid] = { id: jid };
+	async function fetchGroupMetadata(id, conn) {
+		if (!isJidGroup(id)) return null;
 
 		// 1) Kalau ada fetch untuk jid ini yang masih pending, tunggu itu
-		if (pendingFetches.has(jid)) {
-			return pendingFetches.get(jid);
+		if (pendingFetches.has(id)) {
+			return pendingFetches.get(id);
 		}
 
 		// 2) Hitung interval cache (misal 5 menit)
 		const CACHE_INTERVAL = 5 * 60 * 1000;
-		const needsUpdate = !groupMetadata[jid]?.metadata
-			|| Date.now() - (groupMetadata[jid]?.lastfetch || 0) > CACHE_INTERVAL;
+
+		const gm = await groupMetadata.findOne({ id })
+		const needsUpdate = !gm
+			|| Date.now() - (gm?.lastfetch || 0) > CACHE_INTERVAL;
 
 		// 3) Jika tidak perlu update, langsung return cache
 		if (!needsUpdate) {
-			return groupMetadata[jid];
+			return gm
 		}
 
 		// 4) Buat sebuah promise dan simpan di pendingFetches
@@ -410,25 +444,29 @@ export default function makeInMemoryStore(config) {
 			try {
 				// panggil API (conn.groupMetadata)
 				const apiFn = conn.groupMetadata;
-				const metadata = await apiFn(jid);
+				const metadata = await apiFn(id);
 				if (metadata) {
-					Object.assign(groupMetadata[jid], {
-						...metadata,
-						lastfetch: Date.now(),
-						expired: config?.db?.data?.chats?.[jid]?.expired ?? 0
-					});
-					for (let { id, phoneNumber } of metadata.participants) {
-						if (phoneNumber) {
-							if (!contacts[phoneNumber]) contacts[phoneNumber] = {}
-							Object.assign(contacts[phoneNumber], { id: phoneNumber, lid: id })
+					await groupMetadata.updateOne({ id }, {
+						$set: {
+							id,
+							...metadata,
+							lastfetch: Date.now()
 						}
-					}
+					}, { upsert: true })
+					let ops = metadata.participants.map(({ id, phoneNumber }) => ({
+						updateOne: {
+							filter: { id: phoneNumber },
+							update: { $set: { id: phoneNumber, lid: id } },
+							upsert: true
+						}
+					}))
+					if (ops.length) await contacts.bulkWrite(ops)
 				}
 			} catch (err) {
 				// jika kena rate limit (429) atau error server (500), log & gunakan cache
 				if (err?.data === 429 || err?.output?.statusCode === 500) {
 					config?.SocketConfig?.logger.warn(
-						`Rate limit saat fetch metadata ${jid}, pakai cache.`
+						`Rate limit saat fetch metadata ${id}, pakai cache.`
 					);
 				} else {
 					// error lain diteruskan
@@ -436,47 +474,13 @@ export default function makeInMemoryStore(config) {
 				}
 			} finally {
 				// bersihkan pending
-				pendingFetches.delete(jid);
+				pendingFetches.delete(id);
 			}
-			return groupMetadata[jid];
+			return await groupMetadata.findOne({ id })
 		})();
-		pendingFetches.set(jid, p);
+		pendingFetches.set(id, p);
 		return p;
 	}
-
-	function toJSON() {
-		// Convert Map to object for JSON serialization
-		const mapToObject = (map) => {
-			const obj = {};
-			for (const [key, value] of map.entries()) {
-				obj[key] = value;
-			}
-			return obj;
-		};
-
-		return {
-			chats: mapToObject(chats),
-			messages,
-			contacts,
-			groupMetadata
-		};
-	};
-
-	function fromJSON(json) {
-		// Convert chats object back to Map
-		if (json?.chats) {
-			for (const [key, value] of Object.entries(json.chats)) {
-				chats.set(key, value);
-			}
-		}
-		if (json?.contacts) Object.assign(contacts, json.contacts);
-		if (json?.groupMetadata) Object.assign(groupMetadata, json.groupMetadata);
-		if (json?.messages) {
-			for (const jid in json.messages) {
-				messages[jid] = json.messages[jid].map(m => m && proto.WebMessageInfo.fromObject(m)).filter(m => m && m.messageStubType != WAMessageStubType.CIPHERTEXT);
-			};
-		};
-	};
 
 	return {
 		chats,
@@ -484,52 +488,24 @@ export default function makeInMemoryStore(config) {
 		messages,
 		groupMetadata,
 		state,
-		expired,
 		bind,
 		loadMessage,
 		getExpiration,
-		handleExpired,
-		mostRecentMessage: (jid) => messages[jid]?.slice(-1)[0],
+		mostRecentMessage: (jid) => messages.findOne({ jid: jidNormalizedUser(jid) }, { sort: { messageTimestamp: -1 } }),
 		fetchImageUrl: async (jid, conn) => {
 			jid = jidNormalizedUser(jid) || jid;
-			if (!(jid in contacts)) contacts[jid] = {};
-			if (contacts[jid] && !contacts[jid].imgUrl || /changed/.test(contacts[jid].imgUrl)) {
-				const url = await conn?.profilePictureUrl(jid, "image").catch(_ => AVATAR);
-				Object.assign(contacts[jid], { id: jid, imgUrl: url });
+			const contact = await contacts.findOne({ id: jid })
+			let url = AVATAR;
+			if (contact && !contact.imgUrl || /changed/.test(contacts.imgUrl)) {
+				url = await conn?.profilePictureUrl(jid, "image").catch(_ => AVATAR);
+				await contacts.updateOne({ id: jid }, { $set: { imgUrl: url } }, { upsert: true });
 			};
-			return contacts[jid].imgUrl;
+			return url;
 		},
 		fetchGroupMetadata,
-		fetchMessageReceipts: ({ remoteJid, id }) => {
-			const msg = loadMessage(remoteJid, id);
-			return msg?.userReceipt;
-		},
-		toJSON,
-		fromJSON,
-		writeToFile: (path, extra = false) => {
-			let listJids = Object.keys(messages);
-			if (listJids.length)
-				for (const jid of listJids) {
-					const length = messages[jid].length;
-					if (length > 100) {
-						delete messages[jid];
-					}
-				};
-
-			// Limit storage size
-			if (chats.size >= 250) chats.clear();
-			if (Object.keys(messages).length >= 300) messages = {};
-
-			writeFileSync(path, JSON.stringify(toJSON(extra), null, 2));
-		},
-		readFromFile: (path) => {
-			if (existsSync(path)) {
-				config?.SocketConfig?.logger.debug({ path }, "reading from file");
-				const jsonStr = readFileSync(path, "utf-8");
-				const json = JSON.parse(jsonStr);
-				fromJSON(json);
-			} else
-				config?.logger?.error({ path }, "path does exist");
+		fetchMessageReceipts: async ({ remoteJid, id }) => {
+			const msg = await loadMessage(remoteJid, id);
+			return msg?.receipts;
 		}
 	};
 };

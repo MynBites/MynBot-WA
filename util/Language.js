@@ -18,7 +18,7 @@ export const Lang = {
       }
     }
     return args ? curr?.replace(/\{([_0-9A-Za-z]+?)\}/g, (_, group) => {
-      return args && args[group] ? args[group] : ''
+      return group in args ? args[group] || '' : _
     }) : curr || ''
   }
 }

@@ -33,3 +33,28 @@ export class Database {
     })
   }
 }
+
+import { MongoClient, ServerApiVersion } from 'mongodb'
+const uri = process.env.MONGO_URI || "mongodb://localhost:27017/db";
+
+// Create a MongoClient with a MongoClientOptions object to set the Stable API version
+const client = new MongoClient(uri, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  }
+});
+
+await client.connect()
+process.on('beforeExit', async () => {
+  try {
+    await client.close();
+  } catch (error) {
+    console.error('Error closing MongoDB connection:', error);
+  } finally {
+    process.exit(0);
+  }
+});
+
+export default client;

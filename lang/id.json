@@ -5,9 +5,39 @@
       "rowner": "Perintah ini hanya dapat digunakan oleh pemilik server.",
       "owner": "Perintah ini hanya dapat digunakan oleh pemilik bot.",
       "admin": "Perintah ini hanya dapat digunakan oleh admin grup.",
+      "botAdmin": "Perintah ini hanya dapat digunakan jika bot adalah admin grup.",
       "premium": "Perintah ini hanya dapat digunakan oleh pengguna premium.",
       "group": "Perintah ini hanya dapat digunakan di grup.",
-      "private": "Perintah ini hanya dapat digunakan di pesan pribadi."
+      "private": "Perintah ini hanya dapat digunakan di pesan pribadi.",
+      "reply": "Anda harus membalas pesan untuk menggunakan perintah ini."
+    }
+  },
+  "check": {
+    "unquoted": "Pesan yang anda balas tidak mengandung balasan.",
+    "quoteNotFound": "Pesan yang anda balas tidak ditemukan.",
+    "noMedia": "Pesan yang anda balas tidak berupa {mediaType}."
+  },
+  "mediaType": {
+    "image": "gambar",
+    "video": "video",
+    "audio": "audio",
+    "document": "dokumen",
+    "sticker": "stiker",
+    "gif": "gif"
+  },
+  "plugins": {
+    "eval": {
+      "name": "Evaluasi Kode",
+      "description": "Evaluasi kode JavaScript.",
+      "usage": "Penggunaan: `!eval <kode>`",
+      "success": "Evaluasi berhasil:\n```js\n{result}\n```",
+      "error": "Terjadi kesalahan saat mengevaluasi kode:\n```js\n{error}\n```",
+      "syntaxError": "Kesalahan sintaksis:\n```js\n{error}\n```",
+      "timeout": "Evaluasi kode melebihi batas waktu.",
+      "noCode": "Tidak ada kode yang diberikan untuk dievaluasi.",
+      "permissionDenied": "Anda tidak memiliki izin untuk menggunakan perintah ini.",
+      "invalidCode": "Kode yang diberikan tidak valid atau tidak dapat dieksekusi.",
+      "executionError": "Terjadi kesalahan saat mengeksekusi kode:\n```js\n{error}\n```"
     }
   }
 }

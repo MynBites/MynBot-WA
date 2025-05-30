@@ -1,6 +1,7 @@
 import syntaxError from 'syntax-error'
 import { format } from 'util'
 import { plugin } from '../index.js'
+import baileys from '@whiskeysockets/baileys'
 
 const AsyncFunction = (async () => {}).constructor
 function execute(code, _this, providedVariables) {
@@ -26,12 +27,13 @@ plugin.add('eval', {
         sock: this,
         conn: this,
         plugin,
-        // baileys,
+        baileys,
         print(...args) {
           if (--i < 1) return
           console.log(...args)
           return m.reply(format(...args))
         },
+        ...options
       })
     } catch (e) {
       let err = await syntaxError(_text, 'Execution Function', {

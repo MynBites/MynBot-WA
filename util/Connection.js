@@ -1,27 +1,38 @@
-import fs, { existsSync, mkdirSync } from 'fs'
-import path, { join } from 'path'
 import pino from 'pino'
 import {
   Browsers,
   makeWASocket,
   DisconnectReason,
   makeCacheableSignalKeyStore,
-  useMultiFileAuthState,
   fetchLatestWaWebVersion,
   areJidsSameUser,
+  generateMessageIDV2,
+  addTransactionCapability,
+  isLidUser,
+  jidDecode
 } from '@whiskeysockets/baileys'
 import qrcode from 'qrcode-terminal'
 import makeInMemoryStore from './Store.js'
 import { serialize } from './Message.js'
 import { onCall, onGroupUpdate, onMessage, onParticipantsUpdate } from './Handlers.js'
+import createAuthState from './AuthState.js'
+import client from './Database.js'
+import { parsePhoneNumber, getNumberFrom } from 'awesome-phonenumber'
 
+export const IDENTIFIER = 'B41E' // HEX identifier to detect messages from this bot
 const browser = Browsers.appropriate('Edge')
 const P = pino({
   level: 'info',
   transport: { target: 'pino-pretty' },
 })
-const SESSION_FOLDER = join(import.meta.dirname, '../db/session')
-const DB_FOLDER = join(import.meta.dirname, '../db/data')
+
+function toPhoneNumber(jid) {
+    return jid && jidDecode(jid) && jidDecode(jid).user
+        ? getNumberFrom(parsePhoneNumber("+" + jidDecode(jid).user), "international").number
+        : jid
+}
+
+
 export class Connection {
   /** @type {ReturnType<typeof import('@whiskeysockets/baileys').makeWASocket>} */
   conn = {}
@@ -33,29 +44,7 @@ export class Connection {
   constructor(name = 'default') {
     this.sessionName = name
     this.logger = P.child({ class: this.sessionName })
-
-    let t = 0
-    setInterval(() => {
-      if (Date.now() - t < 5000) return
-      t = Date.now()
-      this.store?.writeToFile(this.store.file)
-    }, 5_000)
-
-    process.on('beforeExit', () => {
-      this.store?.writeToFile(this.store.file)
-    })
-  }
-
-  get sessionFolder() {
-    const folder = join(SESSION_FOLDER, this.sessionName)
-    if (!existsSync(folder)) mkdirSync(folder, { recursive: true })
-    return folder
-  }
-
-  get dbFolder() {
-    const folder = join(DB_FOLDER, this.sessionName)
-    if (!existsSync(folder)) mkdirSync(folder, { recursive: true })
-    return folder
+    this.db = client.db('wa_db_' + this.sessionName)
   }
 
   /**
@@ -72,7 +61,7 @@ export class Connection {
       )
     let { printQRInTerminal: __unused_omitted_object__, ..._socketOptions } = options
     this.options = options
-    this.auth = await useMultiFileAuthState(this.sessionFolder)
+    this.auth = await createAuthState(this.db)
 
     this.conn = Object.defineProperties(
       makeWASocket({
@@ -81,7 +70,10 @@ export class Connection {
         browser,
         auth: {
           ...this.auth.state,
-          keys: makeCacheableSignalKeyStore(this.auth.state.keys, this.logger),
+          keys: makeCacheableSignalKeyStore(addTransactionCapability(this.auth.state.keys, this.logger, {
+            maxCommitRetries: 10,
+            delayBetweenTriesMs: 500,
+          }), this.logger),
         },
         qrTimeout: 60_000,
         syncFullHistory: false,
@@ -121,7 +113,6 @@ export class Connection {
         },
         reply: {
           value(chatId, message, quoted, options) {
-            self.logger.info('reply', { chatId, message, quoted, options })
             this.sendMessage(
               chatId,
               { ...(typeof message == 'string' ? { text: message } : message), ...options },
@@ -135,26 +126,26 @@ export class Connection {
            * @param {String} jid
            * @param {Boolean} withoutContact
            */
-          value(jid = '') {
+          async value(jid = '') {
             let v =
               areJidsSameUser(jid, '0@s.whatsapp.net')
                 ? {
-                    jid,
+                    id: jid,
                     name: 'WhatsApp',
                   }
                 : areJidsSameUser(jid, this.user?.id)
                 ? this.user
                 : {
-                    ...self.store.chats.get(jid),
-                    ...self.store.contacts[jid],
-                    ...self.store.groupMetadata[jid],
+                    ...await self.store.chats.findOne({ id: jid }),
+                    ...await self.store.contacts.findOne({ id: jid }),
+                    ...await self.store.groupMetadata.findOne({ id: jid }),
                   }
             let name =
               v.subject ||
               v.verifiedName ||
               v.notify ||
               v.name ||
-              PhoneNumber('+' + jid?.replace('@s.whatsapp.net', ''))?.getNumber('international')
+              toPhoneNumber(v.id)
             return name
           },
         },
@@ -162,20 +153,20 @@ export class Connection {
     )
 
     let oldSendMessage = this.conn.sendMessage
-    this.conn.sendMessage = function (chatId, message, options) {
-      return oldSendMessage(chatId, message, {
+    this.conn.sendMessage = async function (chatId, message, options) {
+      return await oldSendMessage(chatId, message, {
         ...options,
-        ephemeralExpiration: this.store.chats.get(chatId).ephemeralExpiration,
+        ephemeralExpiration: await this.store.getExpiration(chatId),
+        messageId: options?.messageId || (generateMessageIDV2(this.user?.id).slice(0, -IDENTIFIER.length) + IDENTIFIER),
       })
     }
 
     this.store = makeInMemoryStore({
       logger: this.logger,
+      db: this.db,
     })
     this.store.bind(this.conn.ev)
-    this.store.file = path.join(this.sessionFolder, 'store.json')
-    if (existsSync(this.store.file)) this.store.readFromFile(this.store.file)
-
+ 
     this.reload()
     return conn
   }
@@ -192,9 +183,10 @@ export class Connection {
       return this.start(options, this.conn)
     }
     this.conn.ev.on('connection.update', this.connectionUpdate.bind(this))
-    this.conn.ev.on('messages.upsert', ({ messages, type, requestId }) => {
+    this.conn.ev.on('messages.upsert', update => {
+      const { messages } = update
       for (let m of messages) {
-        m = serialize(m, this.conn) || m
+        m = serialize(m, this.conn, this.getJidFromLid.bind(this)) || m
         onMessage.call(this.conn, m)
       }
     })
@@ -235,8 +227,8 @@ export class Connection {
           lastDisconnect?.error?.output?.payload?.statusCode == DisconnectReason.loggedOut ||
           /failure/i.test(lastDisconnect?.error?.output?.payload?.message)
         )
-          this.disconnect(true)
-        else if (/\:/.test(this.conn.user?.id)) this.reload(true)
+          await this.disconnect(true, true)
+        else if (/\:/.test(this.conn.user?.id)) await this.reload(true, this.options)
       }
     }
   }
@@ -246,15 +238,21 @@ export class Connection {
     return code?.match(/.{1,4}/g)?.join('-') || code
   }
 
-  async disconnect(isLogout) {
+  async disconnect(isLogout, fromDevice) {
     this.logger?.info('Close connection', isLogout ? 'logout' : '')
     if (isLogout) {
-      this.conn.logout()
-      await fs.promises.rm(this.sessionFolder, { recursive: true })
-      this.store?.clear?.()
-      if (this.reconnectOnLogout) this.reload(true)
+      if (!fromDevice) await this.conn.logout()
+      await this.auth?.clear?.()
+      await this.store?.clear?.()
+      if (this.reconnectOnLogout) await this.reload(true, this.options)
     } else {
       this.conn.end()
     }
+  }
+  async getJidFromLid(lid) {
+    if (!lid) return ''
+    if (!isLidUser(lid)) return lid
+    const contact = await this.store?.contacts.findOne({ lid })
+    return contact?.id || lid
   }
 }

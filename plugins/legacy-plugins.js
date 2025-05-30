@@ -1,7 +1,16 @@
 import { plugin } from '../index.js'
 import path from 'path'
+import Permissions from '../util/Permissions.js'
 
 const legacyFolder = path.resolve(path.join(import.meta.dirname, 'legacy'))
+const PermissionLegacyMap = {
+  isROwner: 'rowner',
+  isOwner: 'owner',
+  isAdmin: 'admin',
+  isBotAdmin: 'botAdmin',
+  isGroup: 'group',
+  isPrivate: 'private',
+}
 
 plugin.removeAllListeners('load')
 plugin.on('load', ({ file, folder, data }) => {
@@ -12,7 +21,11 @@ plugin.on('load', ({ file, folder, data }) => {
     preMessage: data.before,
     preCommand: data.all,
     onCommand: data ? function (m, options) {
-      return data.call(this, m, { ...options, conn: this, sock: this })
+      legacyOptions = {}
+      for (const [key, value] of Object.entries(PermissionLegacyMap)) {
+        if (data[value]) legacyOptions[key] = Permissions[value].call(this, m, options)
+      }
+      return data.call(this, m, { ...options, legacyOptions, conn: this, sock: this })
     } : undefined,
     postCommand: data.after
   }

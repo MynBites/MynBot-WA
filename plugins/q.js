@@ -1,13 +1,14 @@
 import { plugin } from '../index.js'
+import Lang from '../util/Language.js'
 
 plugin.add('q', {
 	help: ['q'],
 	tags: 'tools',
 	command: 'q',
+	permission: 'reply',
 	async onCommand(m) {
-		if (!m.quoted) throw 'Please reply a message'
 		const q = await m.getQuotedObj()
-		if (!q.quoted) throw 'Replied message doesn\'t contain reply'
+		if (!q.quoted) throw Lang.format('check.unquoted')
 		q.quoted.forward(m.chat)
 	}
 })
