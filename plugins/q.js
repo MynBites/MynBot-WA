@@ -3,7 +3,7 @@ import Lang from '../util/Language.js'
 
 plugin.add('q', {
 	help: ['q'],
-	tags: 'tools',
+	type: 'tools',
 	command: 'q',
 	permission: 'reply',
 	async onCommand(m) {

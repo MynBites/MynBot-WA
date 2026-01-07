@@ -10,8 +10,8 @@ plugin.add('menu', {
       let Plugin = plugin.plugins[name]
       if (!Plugin.type || !Plugin.help) continue
       tags[Plugin.type] = tags[Plugin.type] || []
-      tags[Plugin.type].push(...Plugin.help)
+      tags[Plugin.type].push(...(Array.isArray(Plugin.help) ? Plugin.help : [Plugin.help]).map(v => (Plugin.prefix ? '' : prefix) + v))
     }
-    m.reply(Object.entries(tags).map(([type, help]) => `${type}\n${help.map(v => `- ${prefix + v}`).join('\n')}`).join('\n\n'))
+    m.reply(Object.entries(tags).map(([type, help]) => `${type}\n${help.map(v => `- ${v}`).join('\n')}`).join('\n\n'))
   }
 })

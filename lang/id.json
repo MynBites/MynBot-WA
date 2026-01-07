@@ -22,22 +22,19 @@
     "video": "video",
     "audio": "audio",
     "document": "dokumen",
-    "sticker": "stiker",
-    "gif": "gif"
+    "sticker": "stiker"
   },
   "plugins": {
     "eval": {
       "name": "Evaluasi Kode",
       "description": "Evaluasi kode JavaScript.",
-      "usage": "Penggunaan: `!eval <kode>`",
-      "success": "Evaluasi berhasil:\n```js\n{result}\n```",
-      "error": "Terjadi kesalahan saat mengevaluasi kode:\n```js\n{error}\n```",
-      "syntaxError": "Kesalahan sintaksis:\n```js\n{error}\n```",
-      "timeout": "Evaluasi kode melebihi batas waktu.",
-      "noCode": "Tidak ada kode yang diberikan untuk dievaluasi.",
-      "permissionDenied": "Anda tidak memiliki izin untuk menggunakan perintah ini.",
-      "invalidCode": "Kode yang diberikan tidak valid atau tidak dapat dieksekusi.",
-      "executionError": "Terjadi kesalahan saat mengeksekusi kode:\n```js\n{error}\n```"
+      "usage": "Penggunaan: `> <kode>`"
+    },
+    "sticker": {
+      "name": "Pembuat Stiker",
+      "description": "Membuat stiker dari gambar atau video.",
+      "usage": "Penggunaan: Kirim atau balas gambar/video dengan perintah ini.",
+      "invalid": "Media yang diberikan tidak valid. Harap kirim atau balas gambar atau video."
     }
   }
 }

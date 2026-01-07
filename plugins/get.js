@@ -3,7 +3,9 @@ import { got } from '../util/Scraper.js'
 import util from 'util'
 
 plugin.add('get', {
+  help: ['get <url>'],
   command: ['get'],
+  type: 'developer',
   async onCommand(m, { text }) {
     const url = text
     const res = await got(url)

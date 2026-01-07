@@ -1,6 +1,6 @@
 import syntaxError from 'syntax-error'
 import { format } from 'util'
-import { plugin } from '../index.js'
+import { plugin, Conn } from '../index.js'
 import baileys from '@whiskeysockets/baileys'
 
 const AsyncFunction = (async () => {}).constructor
@@ -26,6 +26,7 @@ plugin.add('eval', {
         m,
         sock: this,
         conn: this,
+        Conn,
         plugin,
         baileys,
         print(...args) {

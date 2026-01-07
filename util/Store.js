@@ -8,9 +8,10 @@ import baileys, {
 	getContentType,
 	jidNormalizedUser,
 	WAMessageStubType,
+	isLidUser,
+	proto,
 } from "@whiskeysockets/baileys"
 
-const { proto } = baileys
 const AVATAR = "https://telegra.ph/file/7ce3f080ee6d1e58f7e33.png"
 
 export default function makeInMemoryStore(config) {
@@ -35,7 +36,7 @@ export default function makeInMemoryStore(config) {
 		if (jid) query.jid = jid
 		const message = await messages.findOne(query)
 
-		return message;
+		return proto.WebMessageInfo.fromObject(message);
 	}
 
 	function isJid(id) {
@@ -85,15 +86,7 @@ export default function makeInMemoryStore(config) {
 			})
 		};
 		let lids = await config?.socket?.onWhatsApp(...newContacts.map(({ id }) => id)) || []
-		for (const { jid, lid } of lids) {
-			ops.push({
-				updateOne: {
-					filter: { id: jid },
-					update: { $set: { id: jid, lid } },
-					upsert: true
-				}
-			})
-		}
+		if (lids) await config?.socket?.signalRepository.lidMapping.storeLIDPNMappings(lids.map(({ jid, lid }) => ({ pn: jid, lid }))).catch(() => {})
 		if (ops.length) {
 			await contacts.bulkWrite(ops)
 		}
@@ -111,16 +104,16 @@ export default function makeInMemoryStore(config) {
 		// ===== KODE PERBAIKAN =====
 		ev.on("connection.update", async update => {
 			Object.assign(state, update);
-			const rawId = config?.socket?.user?.id;
-			if (!rawId) {
-				// log peringatan, lalu keluar supaya tidak error
-				config?.SocketConfig?.logger.warn("socket.user.id belum tersedia, skip onWhatsApp call");
-				return;
-			}
-			const waId = rawId.split('@')[0].split(':')[0] + '@s.whatsapp.net';
-			if ((waId in contacts && 'lid' in contacts[waId]) || state.connection !== 'open') return
-			const [{ jid, lid }] = await config.socket.onWhatsApp(waId);
-			await contacts.updateOne({ id: jid }, { $set: { id: jid, lid } }, { upsert: true })
+			// const rawId = config?.socket?.user?.id;
+			// if (!rawId) {
+			// 	// log peringatan, lalu keluar supaya tidak error
+			// 	config?.SocketConfig?.logger.warn("socket.user.id belum tersedia, skip onWhatsApp call");
+			// 	return;
+			// }
+			// const waId = rawId.split('@')[0].split(':')[0] + '@s.whatsapp.net';
+			// if ((waId in contacts && 'lid' in contacts[waId]) || state.connection !== 'open') return
+			// const [{ jid, lid }] = await config.socket.onWhatsApp(waId);
+			// await contacts.updateOne({ id: jid }, { $set: { id: jid, lid } }, { upsert: true })
 		});
 
 		ev.on("messaging-history.set", async ({
@@ -183,15 +176,7 @@ export default function makeInMemoryStore(config) {
 
 			let ops = []
 			let lids = await config?.socket?.onWhatsApp(...updatedIds.map(({ id }) => id)) || []
-			for (const { jid, lid } of lids) {
-				ops.push({
-					updateOne: {
-						filter: { id: jid },
-						update: { $set: { id: jid, lid } },
-						upsert: true
-					}
-				})
-			}
+			if (lids) await config?.socket?.signalRepository.lidMapping.storeLIDPNMappings(lids.map(({ jid, lid }) => ({ pn: jid, lid }))).catch(() => {})
 			if (ops.length) await contacts.bulkWrite(ops)
 		});
 
@@ -326,7 +311,6 @@ export default function makeInMemoryStore(config) {
 
 		ev.on("groups.update", async (updates) => {
 			const ops = []
-			const ops2 = []
 			for (const update of updates) {
 				const id = update?.id;
 				await fetchGroupMetadata(id, config?.socket);
@@ -336,17 +320,12 @@ export default function makeInMemoryStore(config) {
 					: update.participants
 						? [update.participants]
 						: [];
-				for (let { id: participantId, phoneNumber } of parts) {
-					ops.push({
-						updateOne: {
-							filter: { id: phoneNumber },
-							update: { $set: { id: phoneNumber, lid: participantId } },
-							upsert: true
-						}
-					})
-				}
 
-				ops2.push({
+				// Simpan mapping LID dan PN
+				let lids = parts.filter(({ id }) => isLidUser(id));
+				if (lids) await config?.socket?.signalRepository.lidMapping.storeLIDPNMappings(lids.map(({ phoneNumber: pn, id: lid }) => ({ pn, lid }))).catch(() => {})
+
+				ops.push({
 					updateOne: {
 						filter: { id },
 						update: { $set: update },
@@ -354,8 +333,7 @@ export default function makeInMemoryStore(config) {
 					}
 				})
 			}
-			if (ops.length) await contacts.bulkWrite(ops);
-			if (ops2.length) await groupMetadata.bulkWrite(ops2);
+			if (ops.length) await groupMetadata.bulkWrite(ops);
 		});
 
 		ev.on("group-participants.update", async ({ id, participants, action }) => {
@@ -427,8 +405,8 @@ export default function makeInMemoryStore(config) {
 			return pendingFetches.get(id);
 		}
 
-		// 2) Hitung interval cache (misal 5 menit)
-		const CACHE_INTERVAL = 5 * 60 * 1000;
+		// 2) Hitung interval cache (misal 30 detik)
+		const CACHE_INTERVAL = 30 * 1000;
 
 		const gm = await groupMetadata.findOne({ id })
 		const needsUpdate = !gm
@@ -453,14 +431,10 @@ export default function makeInMemoryStore(config) {
 							lastfetch: Date.now()
 						}
 					}, { upsert: true })
-					let ops = metadata.participants.map(({ id, phoneNumber }) => ({
-						updateOne: {
-							filter: { id: phoneNumber },
-							update: { $set: { id: phoneNumber, lid: id } },
-							upsert: true
-						}
-					}))
-					if (ops.length) await contacts.bulkWrite(ops)
+
+					let lids = metadata.participants.filter(({ id }) => isLidUser(id));
+					if (lids) await config?.socket?.signalRepository.lidMapping.storeLIDPNMappings(lids.map(({ phoneNumber: pn, id: lid }) => ({ pn, lid }))).catch(() => {})
+
 				}
 			} catch (err) {
 				// jika kena rate limit (429) atau error server (500), log & gunakan cache
@@ -483,6 +457,7 @@ export default function makeInMemoryStore(config) {
 	}
 
 	return {
+		db,
 		chats,
 		contacts,
 		messages,

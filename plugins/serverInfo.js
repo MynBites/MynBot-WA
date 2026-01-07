@@ -21,8 +21,9 @@ const List = (data) =>
       .join("\n");
 
 plugin.add('serverInfo', {
-  description: 'Displays server information',
+  help: ['srv'],
   command: ['srv'],
+  type: 'server',
   async onCommand(m) {
     const json = await got("https://ipwho.is/").json();
 

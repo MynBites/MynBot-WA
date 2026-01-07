@@ -13,7 +13,7 @@ const str2Regex = (str) => str.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&')
  */
 export async function onMessage(m) {
   let options = { sock: this, conn: this }
-
+  // ChatLog.call(this, m)
   if (m.isBaileys) return
 
   options.groupMetadata = m.isGroup ? await this.store?.fetchGroupMetadata?.(m.chat, this) : {}
@@ -21,6 +21,16 @@ export async function onMessage(m) {
 
   for (let name in plugin.plugins) {
     const Plugin = plugin.plugins[name]
+
+    if (Plugin.middleware) {
+      let isSkip = false
+      try {
+        isSkip = await Plugin.middleware.call(this, m, options)
+      } catch (e) {
+        console.error(e)
+      }
+      if (isSkip) continue
+    }
 
     const _prefix = Plugin.prefix ? Plugin.prefix : prefix
     options.match = (
@@ -72,28 +82,31 @@ export async function onMessage(m) {
     if (!isAccept) continue
     const permissions = Array.isArray(Plugin.permission) ? Plugin.permission : [Plugin.permission]
     const passPermission = permissions.map(permission => (typeof Plugin.permission == 'string' && permission in Permissions ? Permissions[permission] : typeof permission == 'function' ? permission : () => true).call(this, m, options))
+    console.log('Permission:', passPermission, 'for', options.command, 'from', m.sender, 'in', m.chat)
     const isNotPass = passPermission.findIndex((p) => p == false)
     if (isNotPass > -1) {
       const reason = permissions[isNotPass]
-      const onFail = Plugin.onFail || (m => {
-        m.react('❌')
-        m.reply(
+      const onFail = Plugin.onFail || (async m => {
+        await m.react('❌')
+        await m.reply(
           Lang.format('permission.denied', {
             reason: Lang.format(`permission.reason.${reason}`) || reason
           })
         )
       })
-      onFail?.call(this, m, { ...options, reason })
+      await onFail?.call(this, m, { ...options, reason }).catch(() => {})
       continue
     }
+    let isError = false
     try {
       await m.react('⏳')
       await Plugin.onCommand?.call(this, m, options)
-      await m.react('✅')
     } catch (e) {
-      await m.react('❌')
+      isError = e
       m.reply(format(e))
       console.error(e)
+    } finally {
+      await m.react(isError ? '❌' : '✅')
     }
   }
   ChatLog.call(this, m)

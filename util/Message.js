@@ -1,7 +1,6 @@
-import baileys, { isJidGroup, getContentType, extractMessageContent, isLidUser, jidNormalizedUser } from '@whiskeysockets/baileys'
+import baileys, { isJidGroup, getContentType, extractMessageContent, isLidUser, jidNormalizedUser, proto } from '@whiskeysockets/baileys'
 import { IDENTIFIER } from './Connection.js'
 import { get } from 'http'
-const { proto } = baileys
 
 // https://github.com/Nurutomo/wabot-aq/issues/490
 const MediaType = [
@@ -12,6 +11,8 @@ const MediaType = [
   'documentMessage',
 ]
 
+let getJidFromLidFunction = null
+
 /**
  * Serialize a message
  * @param {import('@whiskeysockets/baileys').proto.WebMessageInfo} message
@@ -19,6 +20,14 @@ const MediaType = [
  * @returns {import('..').WebMessageInfo}
  */
 export function serialize(message, connection, getJidFromLid) {
+  if (getJidFromLid) {
+    if (typeof getJidFromLid === 'function') {
+      getJidFromLidFunction = getJidFromLid
+    }
+  }
+  if (getJidFromLidFunction) {
+    getJidFromLid = getJidFromLidFunction
+  }
   let property = {
     get() {
       return connection
@@ -26,25 +35,9 @@ export function serialize(message, connection, getJidFromLid) {
   }
   if (!message) return
   if ('conn' in message || 'reply' in message) return message
-  let sender = (message.key?.fromMe && message.conn?.user.id) ||
-    message.participant ||
-    message.key.participant ||
-    message.chat ||
-    ''
-  if (getJidFromLid && isLidUser(sender)) {
-    getJidFromLid(sender).then((jid) => {
-      if (jid) {
-        sender = jid
-      }
-    }).catch(() => {})
-  }
-  return Object.defineProperties(message || proto.WebMessageInfo.prototype, {
+  
+  let m = Object.defineProperties(message || proto.WebMessageInfo.prototype, {
     ...(connection ? { conn: property, sock: property } : {}),
-    _sender: {
-      get() {
-        return getJidFromLid ? sender : ''
-      }
-    },
     id: {
       get() {
         return this.key?.id
@@ -71,6 +64,10 @@ export function serialize(message, connection, getJidFromLid) {
       },
       enumerable: true,
     },
+    _sender: {
+      value: '',
+      writable: true,
+    },
     sender: {
       get() {
         return jidNormalizedUser(
@@ -81,6 +78,9 @@ export function serialize(message, connection, getJidFromLid) {
           this.chat ||
           ''
         )
+      },
+      set(value) {
+        return (this._sender = jidNormalizedUser(value))
       },
       enumerable: true,
     },
@@ -96,6 +96,10 @@ export function serialize(message, connection, getJidFromLid) {
       },
       enumerable: true,
     },
+    _msg: {
+      value: null,
+      writable: true,
+    },
     msg: {
       get() {
         if (!this.message) return null
@@ -104,20 +108,26 @@ export function serialize(message, connection, getJidFromLid) {
           if (!type) return null
           const msg = (message?.message || message)[type]
           const data = findMsg(msg) || msg
-          // if (msg?.editedMessage && data?.caption) {
-          //   const msgStore =
-          //     this.conn.store.loadMessage(msg.key.remoteJid, msg.key.id) ||
-          //     this.conn.store.loadMessage(msg.key.id)
-          //   if (msgStore) {
-          //     const msg2 = proto.WebMessageInfo.fromObject(msgStore)
-          //     msg2.msg.caption = data.caption
-          //     return msg2.msg
-          //   }
-          // }
+          if (msg?.editedMessage && data?.caption) {
+            const msgStore =
+              this.conn.store.loadMessage(msg.key.remoteJid, msg.key.id) ||
+              this.conn.store.loadMessage(msg.key.id)
+            msgStore.then(msg => {
+              if (msg) {
+                const msg2 = proto.WebMessageInfo.fromObject(msgStore)
+                msg2.msg.caption = data.caption
+                this.msg = msg2.msg
+              }
+            })
+          }
           return data
         }
-        return findMsg(extractMessageContent(this.message))
+        return this._msg || findMsg(extractMessageContent(this.message))
       },
+      set(value) {
+        return (this._msg = value)
+      },
+      enumerable: true,
     },
     mediaMessage: {
       get() {
@@ -164,11 +174,18 @@ export function serialize(message, connection, getJidFromLid) {
       },
       enumerable: true,
     },
+    _mentionedJid: {
+      value: null,
+      writable: true,
+    },
     mentionedJid: {
       get() {
-        return (
+        return this._mentionedJid || (
           (this.msg?.contextInfo?.mentionedJid?.length && this.msg.contextInfo.mentionedJid) || []
         )
+      },
+      set(value) {
+        return (this._mentionedJid = value)
       },
       enumerable: true,
     },
@@ -271,6 +288,13 @@ export function serialize(message, connection, getJidFromLid) {
       },
     },
   })
+  if (getJidFromLid) {
+    (async () => {
+      if (isLidUser(m.sender)) m.sender = await getJidFromLid(m.sender)
+      m.mentionedJid = await Promise.all(m.mentionedJid.map(async id => isLidUser(id) ? await getJidFromLid(id) : id))
+    })()
+  }
+  return m
 }
 
 /**

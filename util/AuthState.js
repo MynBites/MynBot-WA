@@ -18,34 +18,37 @@ const getLock = path => {
  * @param {import('mongodb').Db} db 
  * @returns 
  */
-export const createAuthState = async (db) => {
+export const createAuthState = async (db, logger = console) => {
     const auth = db.collection('auth')
-    const writeData = (data, id) => {
+    const TEMP = {}
+    const writeData = async (id, data) => {
         const mutex = getLock(id)
 
-        return mutex.acquire().then(async release => {
-            try {
-                await auth.replaceOne(
-                    { _id: id },
-                    { value: JSON.parse(JSON.stringify(data, BufferJSON.replacer)) },
-                    { upsert: true })
-            } finally {
-                release()
-            }
-        })
+        const release = await mutex.acquire()
+        try {
+            TEMP[id] = data
+            await auth.replaceOne(
+                { _id: id },
+                { value: JSON.parse(JSON.stringify(data, BufferJSON.replacer)) },
+                { upsert: true }
+            )
+        } finally {
+            release()
+        }
     }
-    const readData = id => {
+    const readData = async (id) => {
         const mutex = getLock(id)
-        return mutex.acquire().then(async release => {
-            try {
-                const data = JSON.stringify((await auth.findOne({ _id: id })) || {})
-                return JSON.parse(data, BufferJSON.reviver)?.value
-            } catch (error) {
-                return null
-            } finally {
-                release()
-            }
-        })
+
+        const release = await mutex.acquire()
+        try {
+            const data = JSON.stringify((await auth.findOne({ _id: id })) || {})
+            return JSON.parse(data, BufferJSON.reviver)?.value
+        } catch (error) {
+            logger?.error({ error }, 'Failed to read auth state')
+            return TEMP[id] || {}
+        } finally {
+            release()
+        }
     }
     const creds = (await readData('creds')) || (0, initAuthCreds)()
     return {
@@ -77,13 +80,13 @@ export const createAuthState = async (db) => {
                                 delete IDs[id]
                             }
                         }
-                        await writeData(IDs, category)
+                        await writeData(category, IDs)
                     }))
                 },
             },
         },
         saveCreds: () => {
-            return writeData(creds, 'creds')
+            return writeData('creds', creds)
         },
         clear: () => {
             return auth.deleteMany({})

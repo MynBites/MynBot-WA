@@ -2,22 +2,27 @@ import pino from 'pino'
 import {
   Browsers,
   makeWASocket,
+  downloadMediaMessage,
   DisconnectReason,
   makeCacheableSignalKeyStore,
   fetchLatestWaWebVersion,
   areJidsSameUser,
   generateMessageIDV2,
   addTransactionCapability,
+  useMultiFileAuthState,
   isLidUser,
-  jidDecode
+  jidNormalizedUser,
+  proto,
 } from '@whiskeysockets/baileys'
 import qrcode from 'qrcode-terminal'
 import makeInMemoryStore from './Store.js'
 import { serialize } from './Message.js'
 import { onCall, onGroupUpdate, onMessage, onParticipantsUpdate } from './Handlers.js'
-import createAuthState from './AuthState.js'
+import { toPhoneNumber } from './Util.js'
+// import createAuthState from './AuthState.js'
 import client from './Database.js'
-import { parsePhoneNumber, getNumberFrom } from 'awesome-phonenumber'
+import path from 'path'
+import fs from 'fs'
 
 export const IDENTIFIER = 'B41E' // HEX identifier to detect messages from this bot
 const browser = Browsers.appropriate('Edge')
@@ -25,13 +30,6 @@ const P = pino({
   level: 'info',
   transport: { target: 'pino-pretty' },
 })
-
-function toPhoneNumber(jid) {
-    return jid && jidDecode(jid) && jidDecode(jid).user
-        ? getNumberFrom(parsePhoneNumber("+" + jidDecode(jid).user), "international").number
-        : jid
-}
-
 
 export class Connection {
   /** @type {ReturnType<typeof import('@whiskeysockets/baileys').makeWASocket>} */
@@ -61,7 +59,10 @@ export class Connection {
       )
     let { printQRInTerminal: __unused_omitted_object__, ..._socketOptions } = options
     this.options = options
-    this.auth = await createAuthState(this.db)
+    // this.auth = await createAuthState(this.db)
+    const authFolder = path.join(import.meta.dirname, '../sessions/' + this.sessionName)
+    this.auth = await useMultiFileAuthState(authFolder)
+    this.auth.clear = () => fs.rmSync(authFolder, { recursive: true, force: true })
 
     this.conn = Object.defineProperties(
       makeWASocket({
@@ -70,39 +71,39 @@ export class Connection {
         browser,
         auth: {
           ...this.auth.state,
-          keys: makeCacheableSignalKeyStore(addTransactionCapability(this.auth.state.keys, this.logger, {
+          keys: addTransactionCapability(makeCacheableSignalKeyStore(this.auth.state.keys, this.logger), this.logger, {
             maxCommitRetries: 10,
-            delayBetweenTriesMs: 500,
-          }), this.logger),
+            delayBetweenTriesMs: 5,
+          }),
         },
         qrTimeout: 60_000,
-        syncFullHistory: false,
-        defaultQueryTimeoutMs: undefined,
+        syncFullHistory: true,
+        defaultQueryTimeoutMs: 5_000,
         generateHighQualityLinkPreview: false,
         getMessage: (key) => this.store.loadMessage(key.remoteJid, key.id),
         cachedGroupMetadata: (jid) => this.store.fetchGroupMetadata(jid, this.conn),
-        patchMessageBeforeSending: (message) => {
-          const requiresPatch = Boolean(
-            message.listMessage ||
-              message.buttonsMessage ||
-              message.templateMessage ||
-              message.interactiveMessage,
-          )
-          if (requiresPatch) {
-            message = {
-              viewOnceMessage: {
-                message: {
-                  messageContextInfo: {
-                    deviceListMetadata: {},
-                    deviceListMetadataVersion: 2,
-                  },
-                  ...message,
-                },
-              },
-            }
-          }
-          return message
-        },
+        // patchMessageBeforeSending: (message) => {
+        //   const requiresPatch = Boolean(
+        //     message.listMessage ||
+        //       message.buttonsMessage ||
+        //       message.templateMessage ||
+        //       message.interactiveMessage,
+        //   )
+        //   if (requiresPatch) {
+        //     message = {
+        //       viewOnceMessage: {
+        //         message: {
+        //           messageContextInfo: {
+        //             deviceListMetadata: {},
+        //             deviceListMetadataVersion: 2,
+        //           },
+        //           ...message,
+        //         },
+        //       },
+        //     }
+        //   }
+        //   return message
+        // },
         ..._socketOptions,
       }),
       {
@@ -127,18 +128,19 @@ export class Connection {
            * @param {Boolean} withoutContact
            */
           async value(jid = '') {
+            let lid = isLidUser(jid) ? jid : await this.signalRepository?.lidMapping.getLIDForPN(jid).catch(() => null)
             let v =
               areJidsSameUser(jid, '0@s.whatsapp.net')
                 ? {
-                    id: jid,
-                    name: 'WhatsApp',
-                  }
+                  id: jid,
+                  name: 'WhatsApp',
+                }
                 : areJidsSameUser(jid, this.user?.id)
-                ? this.user
-                : {
-                    ...await self.store.chats.findOne({ id: jid }),
-                    ...await self.store.contacts.findOne({ id: jid }),
-                    ...await self.store.groupMetadata.findOne({ id: jid }),
+                  ? this.user
+                  : {
+                    ...await self.store.chats.findOne({ id: { $in: [jid, lid] } }),
+                    ...await self.store.contacts.findOne({ id: { $in: [jid, lid] } }),
+                    ...await self.store.groupMetadata.findOne({ id: { $in: [jid, lid] } }),
                   }
             let name =
               v.subject ||
@@ -149,6 +151,42 @@ export class Connection {
             return name
           },
         },
+        downloadM: {
+          /**
+           * Get name from jid
+           * @param {proto.WebMessageInfo} m
+           * @param {Boolean} withoutContact
+           */
+          async value(m, options = {}) {
+            if (typeof options != "object") options = {};
+            const msg = m.msg;
+            if (!msg) return null;
+            if (!(msg.url || msg.directPath || msg.thumbnailDirectPath))
+              return null;
+            const edit = m.message?.editedMessage?.message?.protocolMessage;
+            const stream = await downloadMediaMessage(
+              edit
+                ? {
+                  message: {
+                    [getContentType(edit.editedMessage)]: msg,
+                  },
+                }
+                : m,
+              options.asStream || options.saveToFile ? "stream" : "buffer",
+              options,
+              {
+                logger: this.ws.config.logger,
+                reuploadRequest: this.updateMediaMessage,
+              },
+            )
+            if (options.saveToFile) {
+              stream.pipe(fs.createWriteStream(options.saveToFile));
+            }
+            return stream
+            // if (options.asStream) return stream;
+            // return toBuffer(stream);
+          }
+        }
       },
     )
 
@@ -166,7 +204,7 @@ export class Connection {
       db: this.db,
     })
     this.store.bind(this.conn.ev)
- 
+
     this.reload()
     return conn
   }
@@ -180,30 +218,63 @@ export class Connection {
     if (isRestart) {
       // this.conn.ws.close()
       this.conn.ev.removeAllListeners()
+      this.conn.ev.flush()
       return this.start(options, this.conn)
     }
-    this.conn.ev.on('connection.update', this.connectionUpdate.bind(this))
-    this.conn.ev.on('messages.upsert', update => {
-      const { messages } = update
-      for (let m of messages) {
-        m = serialize(m, this.conn, this.getJidFromLid.bind(this)) || m
-        onMessage.call(this.conn, m)
-      }
-    })
-    this.conn.ev.on('call', onCall.bind(this.conn))
-    this.conn.ev.on('group-participants.update', onParticipantsUpdate.bind(this.conn))
-    this.conn.ev.on('groups.update', onGroupUpdate.bind(this.conn))
+    if (!this.events) {
+      this.events = this.conn.ev.process(async events => {
+        for (const eventName in events) {
+          const event = events[eventName]
+          try {
+            switch (eventName) {
+              case 'call': {
+                await onCall.call(this.conn, event)
+              } break
+              case 'connection.update': {
+                await this.connectionUpdate(event)
+              } break
+              case 'creds.update': {
+                await this.auth.saveCreds()
+              } break
+              case 'group-participants.update': {
+                await onParticipantsUpdate.call(this.conn, event)
+              } break
+              case 'groups.update': {
+                await onGroupUpdate.call(this.conn, event)
+              } break
+              case 'messages.upsert': {
+                for (let m of event.messages) {
+                  m = serialize(m, this.conn, this.getJidFromLid.bind(this.conn)) || m
+                  onMessage.call(this.conn, m)
+                }
+              } break
+              case 'messages.delete.me': {
+                const keys = Array.isArray(event.keys)
+                  ? event.keys
+                  : Array.isArray(event)
+                    ? event
+                    : [event]
+                for (const key of keys) onDeleteUpdate.bind(conn, key)
+              } break
+              case 'chats.upsert':
+              case 'chats.update':
+              case 'message-receipt.update':
+              case 'presence.update':
+              case 'contacts.update': {
+                // console.log(event)
+              } break
+              default: {
+                this.logger.info(`[${eventName}]:`, event)
+              } break
+            }
+          } catch (e) {
+            this.logger.error(`Error in event ${eventName}`, e)
+          }
+        }
+      })
+    }
     // this.conn.ev.on('messages.delete.me', (content) => {
-    //   const keys = Array.isArray(content.keys)
-    //     ? content.keys
-    //     : Array.isArray(content)
-    //     ? content
-    //     : [content]
-    //   for (const key of keys) onDeleteUpdate.bind(conn, key)
     // })
-    this.conn.ev.on('creds.update', async () => {
-      this.auth.saveCreds()
-    })
   }
 
   /**
@@ -233,8 +304,8 @@ export class Connection {
     }
   }
 
-  async getCode(number) {
-    const code = await this.conn.requestPairingCode(number)
+  async getCode(number, customPairingCode) {
+    const code = await this.conn.requestPairingCode(number, customPairingCode)
     return code?.match(/.{1,4}/g)?.join('-') || code
   }
 
@@ -252,7 +323,7 @@ export class Connection {
   async getJidFromLid(lid) {
     if (!lid) return ''
     if (!isLidUser(lid)) return lid
-    const contact = await this.store?.contacts.findOne({ lid })
+    const contact = await this.signalRepository?.lidMapping.getPNForLID(lid).then(id => ({ id: jidNormalizedUser(id) })).catch(() => { }) || await this.store.contacts.find(c => c.lid === lid)
     return contact?.id || lid
   }
 }

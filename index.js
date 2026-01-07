@@ -7,7 +7,7 @@ import { serialize } from './util/Message.js'
  * @type {import('./types').plugin}
  */
 export const plugin = new PluginManager(import.meta.dirname)
-export const Conn = new Connection(process.argv[2] || 'default')
+export const Conn = new Connection(process.argv.slice(2).filter(v => !v.startsWith('-'))[0] || 'default')
 // export const db = new (Function)()
 
 export default plugin
