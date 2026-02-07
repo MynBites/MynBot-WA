@@ -24,13 +24,20 @@ Conn.reconnectOnLogout = true
 /** @type {string | undefined} */
 const isPair = process.env.NUMBER
 
-serialize()
-await plugin.addPluginFolder('./plugins', true)
-await Conn.start({ printQRInTerminal: !isPair })
-if (isPair) {
-  console.log('Found env variable NUMBER with value', isPair)
-  await new Promise((resolve) => setTimeout(resolve, 2000))
-  console.log('Your pairing code:', await Conn.getCode(process.env.NUMBER))
-}
+// Only start the connection if not in test mode
+if (process.env.NODE_ENV !== 'test') {
+  serialize()
+  await plugin.addPluginFolder('./plugins', true)
+  await Conn.start({ printQRInTerminal: !isPair })
+  if (isPair) {
+    console.log('Found env variable NUMBER with value', isPair)
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+    console.log('Your pairing code:', await Conn.getCode(process.env.NUMBER))
+  }
 
-process.on('unhandledRejection', console.error)
+  process.on('unhandledRejection', console.error)
+} else {
+  // In test mode, just load plugins without starting connection
+  serialize()
+  await plugin.addPluginFolder('./plugins', true)
+}
