@@ -21,10 +21,7 @@ export default class TempFile {
   }
 
   async create() {
-    this.dir = await fs.promises.mkdtemp(
-      path.join(TempFile.tmpDir),
-      { recursive: true },
-    )
+    this.dir = await fs.promises.mkdtemp(path.join(TempFile.tmpDir), { recursive: true })
     this.filePath = path.join(this.dir, `${this.prefix}${Date.now()}${this.suffix}`)
     console.log(this.filePath, 'created')
     return this.filePath
@@ -47,7 +44,7 @@ export default class TempFile {
       this.filePath = ''
     }
   }
-  
+
   async exists() {
     if (!this.filePath) return false
     try {

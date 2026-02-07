@@ -12,7 +12,7 @@ import {
   useMultiFileAuthState,
   isLidUser,
   jidNormalizedUser,
-  proto,
+  getContentType,
 } from '@whiskeysockets/baileys'
 import qrcode from 'qrcode-terminal'
 import makeInMemoryStore from './Store.js'
@@ -34,11 +34,29 @@ const P = pino({
 export class Connection {
   /** @type {ReturnType<typeof import('@whiskeysockets/baileys').makeWASocket>} */
   conn = {}
-  /** @type {import('@whiskeysockets/baileys').makeInMemoryStore} */
+  /** @type {ReturnType<typeof import('./Store.js').default>} */
   store = {}
-  /** @type {import('@whiskeysockets/baileys').AuthenticationState} */
+  /** @type {Awaited<ReturnType<typeof import('@whiskeysockets/baileys').useMultiFileAuthState>>} */
   auth = {}
+  /** @type {string} */
   qr = ''
+  /** @type {string} */
+  sessionName = ''
+  /** @type {import('pino').Logger} */
+  logger = null
+  /** @type {import('mongodb').Db} */
+  db = null
+  /** @type {import('@whiskeysockets/baileys').UserFacingSocketConfig | { printQRInTerminal: boolean }} */
+  options = {}
+  /** @type {Function | null} */
+  events = null
+  /** @type {boolean} */
+  reconnectOnLogout = false
+
+  /**
+   * Create a new WhatsApp connection
+   * @param {string} [name='default'] - Session name
+   */
   constructor(name = 'default') {
     this.sessionName = name
     this.logger = P.child({ class: this.sessionName })
@@ -46,9 +64,10 @@ export class Connection {
   }
 
   /**
-   * @param {import('@whiskeysockets/baileys').UserFacingSocketConfig | { printQRInTerminal: boolean }} options
-   * @param {import('@whiskeysockets/baileys').WASocket} conn
-   * @returns {import('@whiskeysockets/baileys').WASocket}
+   * Start the WhatsApp connection
+   * @param {import('@whiskeysockets/baileys').UserFacingSocketConfig & { printQRInTerminal?: boolean }} [options={}] - Connection options
+   * @param {import('@whiskeysockets/baileys').WASocket} [conn] - Existing connection to reuse
+   * @returns {Promise<import('@whiskeysockets/baileys').WASocket>} The WhatsApp socket connection
    */
   async start(options = {}, conn) {
     const self = this
@@ -57,7 +76,7 @@ export class Connection {
       P.child({ class: 'Connection' }).info(
         `using WA v${WA_VERSION.version.join('.')}, isLatest: ${WA_VERSION.isLatest}`,
       )
-    let { printQRInTerminal: __unused_omitted_object__, ..._socketOptions } = options
+    let { printQRInTerminal: _printQRInTerminal, ..._socketOptions } = options
     this.options = options
     // this.auth = await createAuthState(this.db)
     const authFolder = path.join(import.meta.dirname, '../sessions/' + this.sessionName)
@@ -71,10 +90,14 @@ export class Connection {
         browser,
         auth: {
           ...this.auth.state,
-          keys: addTransactionCapability(makeCacheableSignalKeyStore(this.auth.state.keys, this.logger), this.logger, {
-            maxCommitRetries: 10,
-            delayBetweenTriesMs: 5,
-          }),
+          keys: addTransactionCapability(
+            makeCacheableSignalKeyStore(this.auth.state.keys, this.logger),
+            this.logger,
+            {
+              maxCommitRetries: 10,
+              delayBetweenTriesMs: 5,
+            },
+          ),
         },
         qrTimeout: 60_000,
         syncFullHistory: true,
@@ -113,6 +136,14 @@ export class Connection {
           },
         },
         reply: {
+          /**
+           * Reply to a message
+           * @param {string} chatId - Chat ID to send reply to
+           * @param {string | object} message - Message text or message object
+           * @param {import('@whiskeysockets/baileys').proto.IWebMessageInfo} [quoted] - Message to quote
+           * @param {import('@whiskeysockets/baileys').MiscMessageGenerationOptions} [options] - Additional options
+           * @returns {Promise<*>} Send result
+           */
           value(chatId, message, quoted, options) {
             this.sendMessage(
               chatId,
@@ -123,56 +154,52 @@ export class Connection {
         },
         getName: {
           /**
-           * Get name from jid
-           * @param {String} jid
-           * @param {Boolean} withoutContact
+           * Get name from JID (WhatsApp ID)
+           * @param {string} [jid=''] - WhatsApp JID to get name for
+           * @returns {Promise<string>} The name or phone number
            */
           async value(jid = '') {
-            let lid = isLidUser(jid) ? jid : await this.signalRepository?.lidMapping.getLIDForPN(jid).catch(() => null)
-            let v =
-              areJidsSameUser(jid, '0@s.whatsapp.net')
-                ? {
+            let lid = isLidUser(jid)
+              ? jid
+              : await this.signalRepository?.lidMapping.getLIDForPN(jid).catch(() => null)
+            let v = areJidsSameUser(jid, '0@s.whatsapp.net')
+              ? {
                   id: jid,
                   name: 'WhatsApp',
                 }
-                : areJidsSameUser(jid, this.user?.id)
-                  ? this.user
-                  : {
-                    ...await self.store.chats.findOne({ id: { $in: [jid, lid] } }),
-                    ...await self.store.contacts.findOne({ id: { $in: [jid, lid] } }),
-                    ...await self.store.groupMetadata.findOne({ id: { $in: [jid, lid] } }),
+              : areJidsSameUser(jid, this.user?.id)
+                ? this.user
+                : {
+                    ...(await self.store.chats.findOne({ id: { $in: [jid, lid] } })),
+                    ...(await self.store.contacts.findOne({ id: { $in: [jid, lid] } })),
+                    ...(await self.store.groupMetadata.findOne({ id: { $in: [jid, lid] } })),
                   }
-            let name =
-              v.subject ||
-              v.verifiedName ||
-              v.notify ||
-              v.name ||
-              toPhoneNumber(v.id)
+            let name = v.subject || v.verifiedName || v.notify || v.name || toPhoneNumber(v.id)
             return name
           },
         },
         downloadM: {
           /**
-           * Get name from jid
-           * @param {proto.WebMessageInfo} m
-           * @param {Boolean} withoutContact
+           * Download media from message
+           * @param {import('@whiskeysockets/baileys').proto.IWebMessageInfo} m - The message to download
+           * @param {object} [options={}] - Download options
+           * @returns {Promise<Buffer | import('stream').Readable>} The downloaded media
            */
           async value(m, options = {}) {
-            if (typeof options != "object") options = {};
-            const msg = m.msg;
-            if (!msg) return null;
-            if (!(msg.url || msg.directPath || msg.thumbnailDirectPath))
-              return null;
-            const edit = m.message?.editedMessage?.message?.protocolMessage;
+            if (typeof options != 'object') options = {}
+            const msg = m.msg
+            if (!msg) return null
+            if (!(msg.url || msg.directPath || msg.thumbnailDirectPath)) return null
+            const edit = m.message?.editedMessage?.message?.protocolMessage
             const stream = await downloadMediaMessage(
               edit
                 ? {
-                  message: {
-                    [getContentType(edit.editedMessage)]: msg,
-                  },
-                }
+                    message: {
+                      [getContentType(edit.editedMessage)]: msg,
+                    },
+                  }
                 : m,
-              options.asStream || options.saveToFile ? "stream" : "buffer",
+              options.asStream || options.saveToFile ? 'stream' : 'buffer',
               options,
               {
                 logger: this.ws.config.logger,
@@ -180,13 +207,13 @@ export class Connection {
               },
             )
             if (options.saveToFile) {
-              stream.pipe(fs.createWriteStream(options.saveToFile));
+              stream.pipe(fs.createWriteStream(options.saveToFile))
             }
             return stream
             // if (options.asStream) return stream;
             // return toBuffer(stream);
-          }
-        }
+          },
+        },
       },
     )
 
@@ -195,7 +222,9 @@ export class Connection {
       return await oldSendMessage(chatId, message, {
         ...options,
         ephemeralExpiration: await this.store.getExpiration(chatId),
-        messageId: options?.messageId || (generateMessageIDV2(this.user?.id).slice(0, -IDENTIFIER.length) + IDENTIFIER),
+        messageId:
+          options?.messageId ||
+          generateMessageIDV2(this.user?.id).slice(0, -IDENTIFIER.length) + IDENTIFIER,
       })
     }
 
@@ -210,9 +239,10 @@ export class Connection {
   }
 
   /**
-   * @param {boolean} isRestart
-   * @param {import('@whiskeysockets/baileys').UserFacingSocketConfig} options
-   * @returns
+   * Reload the connection and event handlers
+   * @param {boolean} [isRestart] - Whether this is a restart
+   * @param {import('@whiskeysockets/baileys').UserFacingSocketConfig} [options={}] - Connection options
+   * @returns {Promise<*>} Connection or void
    */
   reload(isRestart, options = {}) {
     if (isRestart) {
@@ -222,10 +252,11 @@ export class Connection {
       return this.start(options, this.conn)
     }
     if (!this.events) {
-      this.events = this.conn.ev.process(async events => {
+      this.events = this.conn.ev.process(async (events) => {
         for (const eventName in events) {
           const event = events[eventName]
           try {
+            // prettier-ignore
             switch (eventName) {
               case 'call': {
                 await onCall.call(this.conn, event)
@@ -254,7 +285,10 @@ export class Connection {
                   : Array.isArray(event)
                     ? event
                     : [event]
-                for (const key of keys) onDeleteUpdate.bind(conn, key)
+                for (const _key of keys) {
+                  // Note: onDeleteUpdate is not defined, commenting out for now
+                  // onDeleteUpdate.bind(conn, _key)
+                }
               } break
               case 'chats.upsert':
               case 'chats.update':
@@ -265,7 +299,7 @@ export class Connection {
               } break
               default: {
                 this.logger.info(`[${eventName}]:`, event)
-              } break
+              }
             }
           } catch (e) {
             this.logger.error(`Error in event ${eventName}`, e)
@@ -278,14 +312,21 @@ export class Connection {
   }
 
   /**
-   * @param {import('@whiskeysockets/baileys').BaileysEventMap['connection.update']}
+   * Handle connection updates (QR code, status changes, etc.)
+   * @param {import('@whiskeysockets/baileys').BaileysEventMap['connection.update']} param - Connection update event
+   * @returns {Promise<void>}
    */
   async connectionUpdate({ isNewLogin, connection, lastDisconnect, qr }) {
     // console.log({ isNewLogin, connection, lastDisconnect, qr })
     if (isNewLogin) return this.reload(true)
-    if (qr && this.options.printQRInTerminal) qrcode.generate(qr, { small: true })
-    if (connection) {
+    if (qr) {
       this.qr = qr
+      if (this.options.printQRInTerminal) {
+        qrcode.generate(qr, { small: true })
+        this.logger.info('QR Code generated successfully - scan to connect')
+      }
+    }
+    if (connection) {
       this.logger[connection == 'close' ? 'error' : 'info'](
         `[ ${this.conn.user?.id} ] Connection`,
         connection,
@@ -299,16 +340,30 @@ export class Connection {
           /failure/i.test(lastDisconnect?.error?.output?.payload?.message)
         )
           await this.disconnect(true, true)
-        else if (/\:/.test(this.conn.user?.id)) await this.reload(true, this.options)
+        else if (/:/.test(this.conn.user?.id)) await this.reload(true, this.options)
+      } else if (connection == 'open') {
+        this.logger.info('✓ Connection opened successfully')
       }
     }
   }
 
+  /**
+   * Get pairing code for phone number authentication
+   * @param {string} number - Phone number to pair
+   * @param {boolean} [customPairingCode] - Whether to use custom pairing code
+   * @returns {Promise<string>} The pairing code formatted with dashes
+   */
   async getCode(number, customPairingCode) {
     const code = await this.conn.requestPairingCode(number, customPairingCode)
     return code?.match(/.{1,4}/g)?.join('-') || code
   }
 
+  /**
+   * Disconnect from WhatsApp
+   * @param {boolean} [isLogout] - Whether to logout (clear session)
+   * @param {boolean} [fromDevice] - Whether logout initiated from device
+   * @returns {Promise<void>}
+   */
   async disconnect(isLogout, fromDevice) {
     this.logger?.info('Close connection', isLogout ? 'logout' : '')
     if (isLogout) {
@@ -320,10 +375,19 @@ export class Connection {
       this.conn.end()
     }
   }
+  /**
+   * Get JID from LID (Lidded User ID)
+   * @param {string} lid - The LID to convert
+   * @returns {Promise<string>} The corresponding JID
+   */
   async getJidFromLid(lid) {
     if (!lid) return ''
     if (!isLidUser(lid)) return lid
-    const contact = await this.signalRepository?.lidMapping.getPNForLID(lid).then(id => ({ id: jidNormalizedUser(id) })).catch(() => { }) || await this.store.contacts.find(c => c.lid === lid)
+    const contact =
+      (await this.signalRepository?.lidMapping
+        .getPNForLID(lid)
+        .then((id) => ({ id: jidNormalizedUser(id) }))
+        .catch(() => {})) || (await this.store.contacts.find((c) => c.lid === lid))
     return contact?.id || lid
   }
 }

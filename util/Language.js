@@ -17,10 +17,12 @@ export const Lang = {
         return ''
       }
     }
-    return args ? curr?.replace(/\{([_0-9A-Za-z]+?)\}/g, (_, group) => {
-      return group in args ? args[group] || '' : _
-    }) : curr || ''
-  }
+    return args
+      ? curr?.replace(/\{([_0-9A-Za-z]+?)\}/g, (_, group) => {
+          return group in args ? args[group] || '' : _
+        })
+      : curr || ''
+  },
 }
 
 Lang.setLang(Lang.lang)

@@ -1,4 +1,11 @@
-import { promises, unlinkSync, readFileSync, writeFileSync, createReadStream, createWriteStream } from 'fs'
+import {
+  promises,
+  unlinkSync,
+  readFileSync,
+  writeFileSync,
+  createReadStream,
+  createWriteStream,
+} from 'fs'
 import { join } from 'path'
 import { randomBytes } from 'crypto'
 import { tmpdir } from 'os'
@@ -6,7 +13,7 @@ import { gotScraping } from 'got-scraping'
 import { CookieJar } from 'tough-cookie'
 
 export function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 export function log(...args) {
@@ -22,8 +29,8 @@ export const CONSTANT = {
     'image/png': 'image/png',
     'image/jpg': 'image/jpeg',
     'image/jpeg': 'image/jpeg',
-    'image/webp': 'image/webl'
-  }
+    'image/webp': 'image/webp',
+  },
 }
 
 export class TempFile {
@@ -39,18 +46,18 @@ export class TempFile {
     return createWriteStream(this.path, options)
   }
 
-  createReadStream(/** @type {Parameters<createReadStream>[1]} */options) {
+  createReadStream(/** @type {Parameters<createReadStream>[1]} */ options) {
     return createReadStream(this.path, options)
   }
 
   async write(input) {
     if (!input || !Buffer.isBuffer(input)) throw new Error('No Buffer is Found')
-    return promises.writeFile(this.path, buffer)
+    return promises.writeFile(this.path, input)
   }
 
   writeSync(input) {
     if (!input || !Buffer.isBuffer(input)) throw new Error('No Buffer is Found')
-    writeFileSync(this.path, buffer)
+    writeFileSync(this.path, input)
   }
 
   async unlink() {
@@ -73,8 +80,8 @@ export class TempFile {
 export const cookieJar = new CookieJar()
 export const got = gotScraping.extend({
   headers: {
-    accept: "*/*",
-    'accept-language': "en-US,en;q=0.9"
+    accept: '*/*',
+    'accept-language': 'en-US,en;q=0.9',
   },
   cookieJar,
   hooks: {
@@ -82,13 +89,12 @@ export const got = gotScraping.extend({
       (plain, options) => {
         if (plain.form && typeof plain.form === 'object') {
           let isNormal = true
-          let search = new URLSearchParams
+          let search = new URLSearchParams()
           for (let key in plain.form) {
             let value = plain.form[key]
             if (Array.isArray(value)) {
               isNormal = false
-              for (let val of value)
-                search.append(key + '[]', val)
+              for (let val of value) search.append(key + '[]', val)
             } else search.append(key, value)
           }
           if (!isNormal) {
@@ -97,24 +103,25 @@ export const got = gotScraping.extend({
             plain.body = search.toString()
           }
         }
-      }
+      },
     ],
     afterResponse: [
-      response => {
+      (response) => {
         let body = response.rawBody
         try {
           response.body = JSON.parse(body.toString())
           // if (!/^application\/.*?json$/.test(response.headers['content-type']) || !/^[{\[()]]|[}\])]$/.test(body.toString())) throw new TypeError('Not a JSON')
-        } catch (e) {
+        } catch (_e) {
           if (response.headers['content-type']?.startsWith('text/') || response.statusCode >= 500) {
             response.body = body.toString()
-            if (response.statusCode >= 500) response.body = `(${response.statusCode}) ${response.statusMessage}`
+            if (response.statusCode >= 500)
+              response.body = `(${response.statusCode}) ${response.statusMessage}`
           } else {
             response.body = body
           }
         }
         return response
-      }
-    ]
-  }
+      },
+    ],
+  },
 })

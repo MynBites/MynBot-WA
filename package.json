@@ -6,7 +6,11 @@
   "main": "index.js",
   "scripts": {
     "start": "node ./index.js",
-    "test": "mocha --recursive"
+    "test": "NODE_ENV=test mocha --recursive",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "repository": {
     "type": "git",
@@ -23,8 +27,13 @@
   },
   "homepage": "https://github.com/MynBites/MynBot-WA#readme",
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/got": "^9.6.12",
-    "mocha": "^11.1.0"
+    "eslint": "^10.0.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "mocha": "^11.1.0",
+    "prettier": "^3.8.1"
   },
   "dependencies": {
     "@mynbites/plugin-manager": "github:MynBites/plugin-manager",
