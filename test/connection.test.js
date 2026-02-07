@@ -1,20 +1,50 @@
 import assert from 'assert'
 import { describe, it, after } from 'mocha'
-import { Conn } from '../index.js'
+import { Conn, plugin } from '../index.js'
 
 describe('WhatsApp Connection Test', function () {
   // Increase timeout for connection establishment
   this.timeout(60000)
 
   after(async function () {
-    // Clean up connection after tests
-    if (Conn && Conn.conn) {
-      try {
-        await Conn.disconnect(false, false)
-      } catch (error) {
-        console.log('Cleanup error (ignored):', error.message)
+    this.timeout(10000)
+    console.log('Cleaning up connections and event emitters...')
+
+    try {
+      // 1. Close all file watchers in plugin manager
+      console.log('Closing plugin manager watchers...')
+      const folders = Object.keys(plugin.watcher || {})
+      for (const folder of folders) {
+        try {
+          plugin.deletePluginFolder(folder)
+        } catch (error) {
+          console.log(`Error closing watcher for ${folder}:`, error.message)
+        }
       }
+
+      // 2. Remove all event listeners from plugin manager
+      console.log('Removing plugin manager event listeners...')
+      plugin.removeAllListeners()
+
+      // 3. Disconnect connection and remove listeners
+      if (Conn && Conn.conn) {
+        console.log('Removing connection event listeners...')
+        Conn.conn.ev.removeAllListeners()
+
+        console.log('Disconnecting from WhatsApp...')
+        await Conn.disconnect(false, false)
+      }
+
+      console.log('Cleanup completed')
+    } catch (error) {
+      console.log('Cleanup error (ignored):', error.message)
     }
+
+    // 4. Force exit after a short delay to ensure cleanup completes
+    setTimeout(() => {
+      console.log('Forcing process exit...')
+      process.exit(0)
+    }, 1000)
   })
 
   describe('Connection to WhatsApp Web', function () {
