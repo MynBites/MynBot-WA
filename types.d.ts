@@ -36,18 +36,18 @@ interface Options {
 }
 
 type PluginData = {
-  prefix?: string | RegExp | PluginData.prefix[]
-  command?: string | RegExp | PluginData.command[] | false
-  permission: Permissions[]
+  prefix?: string | RegExp | (string | RegExp)[]
+  command?: string | RegExp | (string | RegExp)[] | false
+  permission?: Permissions[]
   priority?: number
 
   help?: string[]
   type?: string
 
-  onCommand(this: WASocket, message?: WebMessageInfo, options?: Options): any
-  onCall(this: WASocket, event: BaileysEventMap['call']): any
-  onGroupUpdate: (this: WASocket, metadata: BaileysEventMap['groups.update']) => any
-  onParticipantsUpdate: (
+  onCommand?(this: WASocket, message?: WebMessageInfo, options?: Options): any
+  onCall?(this: WASocket, event: BaileysEventMap['call']): any
+  onGroupUpdate?: (this: WASocket, metadata: BaileysEventMap['groups.update']) => any
+  onParticipantsUpdate?: (
     this: WASocket,
     metadata: BaileysEventMap['group-participants.update'],
   ) => any
@@ -56,7 +56,7 @@ type PluginData = {
 export interface plugin extends PluginManager {
   add(name: string, options: PluginData): any
   plugins: {
-    [string]: PluginData
+    [key: string]: PluginData
   }
 }
 

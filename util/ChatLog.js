@@ -98,18 +98,18 @@ ${chalk.green('%s')} ${chalk.blueBright('to')} ${chalk.green('%s')} ${chalk.blac
         {
         }
         break
-      case WAProto.Message.ProtocolMessage.Type.REVOKE: {
-        let key = message.key
-        let m = serialize(await this.store.loadMessage(key.remoteJid, key.id), this)
-        if (m) {
-          ChatLog.call(this, m)
-        }
-      }
-      default:
+      case WAProto.Message.ProtocolMessage.Type.REVOKE:
         {
-          console.log(util.inspect(message, false, 99, true))
+          let key = message.key
+          let m = serialize(await this.store.loadMessage(key.remoteJid, key.id), this)
+          if (m) {
+            ChatLog.call(this, m)
+          }
         }
         break
+      default: {
+        console.log(util.inspect(message, false, 99, true))
+      }
     }
   }
   // if (m.mtype === "pollUpdateMessage") {

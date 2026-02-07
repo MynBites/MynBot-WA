@@ -29,7 +29,7 @@ export const CONSTANT = {
     'image/png': 'image/png',
     'image/jpg': 'image/jpeg',
     'image/jpeg': 'image/jpeg',
-    'image/webp': 'image/webl',
+    'image/webp': 'image/webp',
   },
 }
 

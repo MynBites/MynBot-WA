@@ -106,7 +106,8 @@ describe('Plugin Tests', function () {
 
         for (const [name, pluginData] of Object.entries(plugin.plugins)) {
           if (pluginData.help) {
-            const isValidHelp = typeof pluginData.help === 'string' || Array.isArray(pluginData.help)
+            const isValidHelp =
+              typeof pluginData.help === 'string' || Array.isArray(pluginData.help)
 
             assert.ok(
               isValidHelp,

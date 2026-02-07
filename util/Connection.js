@@ -309,11 +309,9 @@ export class Connection {
                   // console.log(event)
                 }
                 break
-              default:
-                {
-                  this.logger.info(`[${eventName}]:`, event)
-                }
-                break
+              default: {
+                this.logger.info(`[${eventName}]:`, event)
+              }
             }
           } catch (e) {
             this.logger.error(`Error in event ${eventName}`, e)
