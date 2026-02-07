@@ -12,7 +12,7 @@ export class Database {
     fs.readFileSync(folder)
     const self = this
     const target = {}
-    const proxy = new Proxy(target, {
+    const _proxy = new Proxy(target, {
       get(target, prop, receiver) {
         const value = self.get(join(name, prop))
         if (value instanceof Function) {

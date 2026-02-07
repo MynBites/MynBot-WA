@@ -76,7 +76,7 @@ export class Connection {
       P.child({ class: 'Connection' }).info(
         `using WA v${WA_VERSION.version.join('.')}, isLatest: ${WA_VERSION.isLatest}`,
       )
-    let { printQRInTerminal: __unused_omitted_object__, ..._socketOptions } = options
+    let { printQRInTerminal: _printQRInTerminal, ..._socketOptions } = options
     this.options = options
     // this.auth = await createAuthState(this.db)
     const authFolder = path.join(import.meta.dirname, '../sessions/' + this.sessionName)
@@ -285,9 +285,9 @@ export class Connection {
                   : Array.isArray(event)
                     ? event
                     : [event]
-                for (const key of keys) {
+                for (const _key of keys) {
                   // Note: onDeleteUpdate is not defined, commenting out for now
-                  // onDeleteUpdate.bind(conn, key)
+                  // onDeleteUpdate.bind(conn, _key)
                 }
               } break
               case 'chats.upsert':

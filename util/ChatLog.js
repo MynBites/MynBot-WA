@@ -190,7 +190,7 @@ ${chalk.green('%s')} ${chalk.blueBright('to')} ${chalk.green('%s')} ${chalk.blac
     )
   if (/document/i.test(m.mtype))
     console.log(`📄 ${m.msg.fileName || m.msg.displayName || 'Document'}`)
-  else if (/ContactsArray/i.test(m.mtype)) console.log(`👨‍👩‍👧‍👦 Contacts`)
+  else if (/ContactsArray/i.test(m.mtype)) console.log('👨‍👩‍👧‍👦 Contacts')
   else if (/contact/i.test(m.mtype)) console.log(`👨 ${m.msg.displayName || ''}`)
   else if (/audio/i.test(m.mtype)) {
     const duration = m.msg.seconds

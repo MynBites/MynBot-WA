@@ -9,23 +9,23 @@ export const ffmpeg = (buffer, args = [], ext = '', ext2 = '') => {
 
       try {
         await tmp.write(buffer)
-      await out.create()
-      cp.spawn('ffmpeg', ['-y', '-i', tmp.filePath, ...args, out.filePath])
-        .once('error', async (e) => {
-          await tmp.remove()
-          await out.remove()
-          reject(e)
-        })
-        .once('close', async () => {
-          if (await out.exists()) {
-            const outputBuffer = await out.read()
-            await Promise.all([tmp.remove(), out.remove()])
-            resolve(outputBuffer)
-          } else {
-            await Promise.all([tmp.remove(), out.remove()])
-            reject(new Error(`FFmpeg process completed but output file was not found: ${out}`))
-          }
-        })
+        await out.create()
+        cp.spawn('ffmpeg', ['-y', '-i', tmp.filePath, ...args, out.filePath])
+          .once('error', async (e) => {
+            await tmp.remove()
+            await out.remove()
+            reject(e)
+          })
+          .once('close', async () => {
+            if (await out.exists()) {
+              const outputBuffer = await out.read()
+              await Promise.all([tmp.remove(), out.remove()])
+              resolve(outputBuffer)
+            } else {
+              await Promise.all([tmp.remove(), out.remove()])
+              reject(new Error(`FFmpeg process completed but output file was not found: ${out}`))
+            }
+          })
       } catch (e) {
         await tmp.remove()
         await out.remove()

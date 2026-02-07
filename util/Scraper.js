@@ -111,7 +111,7 @@ export const got = gotScraping.extend({
         try {
           response.body = JSON.parse(body.toString())
           // if (!/^application\/.*?json$/.test(response.headers['content-type']) || !/^[{\[()]]|[}\])]$/.test(body.toString())) throw new TypeError('Not a JSON')
-        } catch (e) {
+        } catch (_e) {
           if (response.headers['content-type']?.startsWith('text/') || response.statusCode >= 500) {
             response.body = body.toString()
             if (response.statusCode >= 500)

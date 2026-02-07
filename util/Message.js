@@ -177,9 +177,7 @@ export function serialize(message, connection, getJidFromLid) {
           ? this._text
           : (typeof text === 'string'
               ? text
-              : text?.selectedDisplayText ||
-                text?.hydratedTemplate?.hydratedContentText ||
-                text) ||
+              : text?.selectedDisplayText || text?.hydratedTemplate?.hydratedContentText || text) ||
               ''
       },
       set(str) {

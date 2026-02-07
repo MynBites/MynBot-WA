@@ -20,7 +20,6 @@ plugin.add('eval', {
     let _syntax = ''
     let _text = (/^=/.test(prefix) ? 'return ' : '') + noPrefix
     let i = 15
-    let a
     try {
       _return = await execute((command === '=>' ? 'return ' : '') + _text, this, {
         m,
