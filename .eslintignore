@@ -1,0 +1,8 @@
+node_modules
+sessions
+*.log
+.vscode
+dist
+build
+coverage
+.env
