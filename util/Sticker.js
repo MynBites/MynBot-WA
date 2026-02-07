@@ -1,9 +1,9 @@
-import crypto from "crypto"
+import crypto from 'crypto'
 
-import { ffmpeg } from "./Converter.js";
+import { ffmpeg } from './Converter.js'
 
-import webp from "node-webpmux";
-import fetch from "node-fetch";
+import webp from 'node-webpmux'
+import fetch from 'node-fetch'
 
 /**
  * Image to Sticker
@@ -19,11 +19,11 @@ async function sticker1(img, url) {
   return await ffmpeg(
     img,
     [
-      "-vf",
-      "scale=512:512:flags=lanczos:force_original_aspect_ratio=decrease,format=rgba,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=#00000000,setsar=1",
+      '-vf',
+      'scale=512:512:flags=lanczos:force_original_aspect_ratio=decrease,format=rgba,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=#00000000,setsar=1',
     ],
-    "jpeg",
-    "webp",
+    'jpeg',
+    'webp',
   )
 }
 
@@ -37,27 +37,21 @@ async function sticker1(img, url) {
  * @param {Object} extra
  * @returns
  */
-async function addExif(
-  webpSticker,
-  packname,
-  author,
-  categories = [""],
-  extra = {},
-) {
+async function addExif(webpSticker, packname, author, categories = [''], extra = {}) {
   const img = new webp.Image()
-  const stickerPackId = crypto.randomBytes(32).toString("hex")
+  const stickerPackId = crypto.randomBytes(32).toString('hex')
   const json = {
-    "sticker-pack-id": stickerPackId,
-    "sticker-pack-name": packname,
-    "sticker-pack-publisher": author,
+    'sticker-pack-id': stickerPackId,
+    'sticker-pack-name': packname,
+    'sticker-pack-publisher': author,
     emojis: categories,
     ...extra,
-  };
+  }
   let exifAttr = Buffer.from([
-    0x49, 0x49, 0x2a, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x41,
-    0x57, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00,
+    0x49, 0x49, 0x2a, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x41, 0x57, 0x07, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x16, 0x00, 0x00, 0x00,
   ])
-  let jsonBuffer = Buffer.from(JSON.stringify(json), "utf8")
+  let jsonBuffer = Buffer.from(JSON.stringify(json), 'utf8')
   let exif = Buffer.concat([exifAttr, jsonBuffer])
   exif.writeUIntLE(jsonBuffer.length, 14, 4)
   await img.load(webpSticker)
@@ -72,33 +66,27 @@ async function addExif(
  * @param {...String}
  */
 async function sticker(img, url, ...args) {
-  let lastError, stiker;
-  for (let func of [
-    sticker1,
-  ].filter((f) => f)) {
+  let lastError, stiker
+  for (let func of [sticker1].filter((f) => f)) {
     try {
-      if (!img?.includes("WEBP")) stiker = await func(img, url, ...args);
-      if (stiker.includes("html")) continue;
-      if (stiker.includes("WEBP")) {
+      if (!img?.includes('WEBP')) stiker = await func(img, url, ...args)
+      if (stiker.includes('html')) continue
+      if (stiker.includes('WEBP')) {
         try {
-          return await addExif(stiker, ...args);
+          return await addExif(stiker, ...args)
         } catch (e) {
-          console.error(e);
-          return stiker;
+          console.error(e)
+          return stiker
         }
       }
-      throw stiker.toString();
+      throw stiker.toString()
     } catch (err) {
-      lastError = err;
-      continue;
+      lastError = err
+      continue
     }
   }
-  console.error(lastError);
-  return lastError;
+  console.error(lastError)
+  return lastError
 }
 
-export {
-  sticker,
-  sticker1,
-  addExif,
-}
+export { sticker, sticker1, addExif }

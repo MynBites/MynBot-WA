@@ -34,17 +34,17 @@ plugin.add('eval', {
           console.log(...args)
           return m.reply(format(...args))
         },
-        ...options
+        ...options,
       })
     } catch (e) {
       let err = await syntaxError(_text, 'Execution Function', {
         allowReturnOutsideFunction: true,
-        allowAwaitOutsideFunction: true
+        allowAwaitOutsideFunction: true,
       })
       if (err) _syntax = '```' + err + '```\n\n'
       _return = e
     } finally {
-      this.sendMessage(m.chat, {text: _syntax + format(_return)}, { quoted: m })
+      this.sendMessage(m.chat, { text: _syntax + format(_return) }, { quoted: m })
     }
   },
 })

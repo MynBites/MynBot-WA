@@ -38,12 +38,12 @@ export async function onMessage(m) {
         ? [[_prefix.exec(m.text), _prefix]]
         : Array.isArray(_prefix) // Array?
           ? _prefix.map((p) => {
-            let re =
-              p instanceof RegExp // RegExp in Array?
-                ? p
-                : new RegExp(str2Regex(p))
-            return [re.exec(m.text), re]
-          })
+              let re =
+                p instanceof RegExp // RegExp in Array?
+                  ? p
+                  : new RegExp(str2Regex(p))
+              return [re.exec(m.text), re]
+            })
           : typeof _prefix === 'string' // String?
             ? [[new RegExp(str2Regex(_prefix)).exec(m.text), new RegExp(str2Regex(_prefix))]]
             : [[[], new RegExp()]]
@@ -60,15 +60,14 @@ export async function onMessage(m) {
 
     options = {
       ...options,
-      args
+      args,
     }
 
     const isAccept =
       Plugin.command instanceof RegExp // RegExp Mode?
         ? Plugin.command.test(options.command)
         : Array.isArray(Plugin.command) // Array?
-          ? Plugin.command
-            .some((command) =>
+          ? Plugin.command.some((command) =>
               command instanceof RegExp // RegExp in Array?
                 ? command.test(options.command)
                 : command == options.command,
@@ -81,19 +80,37 @@ export async function onMessage(m) {
 
     if (!isAccept) continue
     const permissions = Array.isArray(Plugin.permission) ? Plugin.permission : [Plugin.permission]
-    const passPermission = permissions.map(permission => (typeof Plugin.permission == 'string' && permission in Permissions ? Permissions[permission] : typeof permission == 'function' ? permission : () => true).call(this, m, options))
-    console.log('Permission:', passPermission, 'for', options.command, 'from', m.sender, 'in', m.chat)
+    const passPermission = permissions.map((permission) =>
+      (typeof Plugin.permission == 'string' && permission in Permissions
+        ? Permissions[permission]
+        : typeof permission == 'function'
+          ? permission
+          : () => true
+      ).call(this, m, options),
+    )
+    console.log(
+      'Permission:',
+      passPermission,
+      'for',
+      options.command,
+      'from',
+      m.sender,
+      'in',
+      m.chat,
+    )
     const isNotPass = passPermission.findIndex((p) => p == false)
     if (isNotPass > -1) {
       const reason = permissions[isNotPass]
-      const onFail = Plugin.onFail || (async m => {
-        await m.react('❌')
-        await m.reply(
-          Lang.format('permission.denied', {
-            reason: Lang.format(`permission.reason.${reason}`) || reason
-          })
-        )
-      })
+      const onFail =
+        Plugin.onFail ||
+        (async (m) => {
+          await m.react('❌')
+          await m.reply(
+            Lang.format('permission.denied', {
+              reason: Lang.format(`permission.reason.${reason}`) || reason,
+            }),
+          )
+        })
       await onFail?.call(this, m, { ...options, reason }).catch(() => {})
       continue
     }

@@ -12,7 +12,17 @@ type CustomPermission = (
   this: ThisParameterType<PluginData['onCommand']>,
   ...args: Parameters<PluginData['onCommand']>
 ) => boolean
-type Permissions = 'rowner' | 'owner' | 'admin' | 'botadmin' | 'group' | 'private' | 'announcement' | 'story' | 'reply' | CustomPermission
+type Permissions =
+  | 'rowner'
+  | 'owner'
+  | 'admin'
+  | 'botadmin'
+  | 'group'
+  | 'private'
+  | 'announcement'
+  | 'story'
+  | 'reply'
+  | CustomPermission
 
 interface Options {
   prefix: string
@@ -71,9 +81,22 @@ export interface WebMessageInfo extends proto.WebMessageInfo {
   download(saveToFile: boolean): Buffer
   reply(text: string, chatId: string, options: MiscMessageGenerationOptions): any
   copy(): WebMessageInfo
-  forward(jid: string, force: boolean, options: MiscMessageGenerationOptions): Promise<WebMessageInfo>
-  copyNForward(jid: string, force: boolean, options: MiscMessageGenerationOptions): Promise<WebMessageInfo>
-  cMod(jid: string, text: string, sender: string, options: MiscMessageGenerationOptions): Promise<WebMessageInfo>
+  forward(
+    jid: string,
+    force: boolean,
+    options: MiscMessageGenerationOptions,
+  ): Promise<WebMessageInfo>
+  copyNForward(
+    jid: string,
+    force: boolean,
+    options: MiscMessageGenerationOptions,
+  ): Promise<WebMessageInfo>
+  cMod(
+    jid: string,
+    text: string,
+    sender: string,
+    options: MiscMessageGenerationOptions,
+  ): Promise<WebMessageInfo>
   delete(): Promise<WebMessageInfo>
   react(emoji: string): Promise<WebMessageInfo>
   quoted: WebMessageInfo

@@ -20,14 +20,16 @@ plugin.on('load', ({ file, folder, data }) => {
     permission: [],
     preMessage: data.before,
     preCommand: data.all,
-    onCommand: data ? function (m, options) {
-      legacyOptions = {}
-      for (const [key, value] of Object.entries(PermissionLegacyMap)) {
-        if (data[value]) legacyOptions[key] = Permissions[value].call(this, m, options)
-      }
-      return data.call(this, m, { ...options, legacyOptions, conn: this, sock: this })
-    } : undefined,
-    postCommand: data.after
+    onCommand: data
+      ? function (m, options) {
+          legacyOptions = {}
+          for (const [key, value] of Object.entries(PermissionLegacyMap)) {
+            if (data[value]) legacyOptions[key] = Permissions[value].call(this, m, options)
+          }
+          return data.call(this, m, { ...options, legacyOptions, conn: this, sock: this })
+        }
+      : undefined,
+    postCommand: data.after,
   }
   if (data.rowner) transformed.permission.push('rowner')
   if (data.owner) transformed.permission.push('rowner')
