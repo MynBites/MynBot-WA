@@ -3,7 +3,7 @@ import fs from 'fs'
 
 export class Database {
   constructor(folder, DEFAULT = {}) {
-    this._data = { ...DEFAULT, ...data }
+    this._data = { ...DEFAULT }
     this._folder = folder
   }
 
@@ -11,7 +11,8 @@ export class Database {
     let folder = join(this._folder, name)
     fs.readFileSync(folder)
     const self = this
-    const proxy = new Proxy(obj, {
+    const target = {}
+    const proxy = new Proxy(target, {
       get(target, prop, receiver) {
         const value = self.get(join(name, prop))
         if (value instanceof Function) {

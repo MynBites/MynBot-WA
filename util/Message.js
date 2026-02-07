@@ -175,12 +175,11 @@ export function serialize(message, connection, getJidFromLid) {
           ''
         return typeof this._text === 'string'
           ? this._text
-          : '' ||
-              (typeof text === 'string'
-                ? text
-                : text?.selectedDisplayText ||
-                  text?.hydratedTemplate?.hydratedContentText ||
-                  text) ||
+          : (typeof text === 'string'
+              ? text
+              : text?.selectedDisplayText ||
+                text?.hydratedTemplate?.hydratedContentText ||
+                text) ||
               ''
       },
       set(str) {

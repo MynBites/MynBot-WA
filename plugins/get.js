@@ -11,9 +11,10 @@ plugin.add('get', {
     const res = await got(url)
     const size = res.headers['content-length']
     const type = res.headers['content-type'] || 'application/octet-stream'
-    const filename = res.headers['content-disposition']
-      ? res.headers['content-disposition'].split('filename=')[1]
-      : '' || new URL(url).pathname.split('/').pop() || 'file'
+    const filename =
+      res.headers['content-disposition']?.split('filename=')[1] ||
+      new URL(url).pathname.split('/').pop() ||
+      'file'
     console.log(res.headers)
     if (size > 1024 * 1024 * 1024 * 512) throw 'Filesize too big'
     let answer = res.rawBody

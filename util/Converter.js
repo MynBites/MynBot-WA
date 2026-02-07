@@ -2,12 +2,13 @@ import cp from 'child_process'
 import TempFile from './TempFile.js'
 
 export const ffmpeg = (buffer, args = [], ext = '', ext2 = '') => {
-  return new Promise(async (resolve, reject) => {
-    const tmp = new TempFile('ffmpeg-input-', ext ? `.${ext}` : '')
-    const out = new TempFile('ffmpeg-output-', ext2 ? `.${ext2}` : '')
+  return new Promise((resolve, reject) => {
+    const executeAsync = async () => {
+      const tmp = new TempFile('ffmpeg-input-', ext ? `.${ext}` : '')
+      const out = new TempFile('ffmpeg-output-', ext2 ? `.${ext2}` : '')
 
-    try {
-      await tmp.write(buffer)
+      try {
+        await tmp.write(buffer)
       await out.create()
       cp.spawn('ffmpeg', ['-y', '-i', tmp.filePath, ...args, out.filePath])
         .once('error', async (e) => {
@@ -25,11 +26,13 @@ export const ffmpeg = (buffer, args = [], ext = '', ext2 = '') => {
             reject(new Error(`FFmpeg process completed but output file was not found: ${out}`))
           }
         })
-    } catch (e) {
-      await tmp.remove()
-      await out.remove()
-      reject(e)
+      } catch (e) {
+        await tmp.remove()
+        await out.remove()
+        reject(e)
+      }
     }
+    executeAsync()
   })
 }
 

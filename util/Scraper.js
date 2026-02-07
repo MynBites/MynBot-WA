@@ -52,12 +52,12 @@ export class TempFile {
 
   async write(input) {
     if (!input || !Buffer.isBuffer(input)) throw new Error('No Buffer is Found')
-    return promises.writeFile(this.path, buffer)
+    return promises.writeFile(this.path, input)
   }
 
   writeSync(input) {
     if (!input || !Buffer.isBuffer(input)) throw new Error('No Buffer is Found')
-    writeFileSync(this.path, buffer)
+    writeFileSync(this.path, input)
   }
 
   async unlink() {

@@ -285,7 +285,10 @@ export class Connection {
                   : Array.isArray(event)
                     ? event
                     : [event]
-                for (const key of keys) onDeleteUpdate.bind(conn, key)
+                for (const key of keys) {
+                  // Note: onDeleteUpdate is not defined, commenting out for now
+                  // onDeleteUpdate.bind(conn, key)
+                }
               } break
               case 'chats.upsert':
               case 'chats.update':
@@ -332,7 +335,7 @@ export class Connection {
           /failure/i.test(lastDisconnect?.error?.output?.payload?.message)
         )
           await this.disconnect(true, true)
-        else if (/\:/.test(this.conn.user?.id)) await this.reload(true, this.options)
+        else if (/:/.test(this.conn.user?.id)) await this.reload(true, this.options)
       }
     }
   }

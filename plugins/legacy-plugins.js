@@ -22,7 +22,7 @@ plugin.on('load', ({ file, folder, data }) => {
     preCommand: data.all,
     onCommand: data
       ? function (m, options) {
-          legacyOptions = {}
+          const legacyOptions = {}
           for (const [key, value] of Object.entries(PermissionLegacyMap)) {
             if (data[value]) legacyOptions[key] = Permissions[value].call(this, m, options)
           }

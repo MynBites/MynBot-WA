@@ -96,6 +96,7 @@ ${chalk.green('%s')} ${chalk.blueBright('to')} ${chalk.green('%s')} ${chalk.blac
     // prettier-ignore
     switch (message.type) {
       case WAProto.Message.ProtocolMessage.Type.MESSAGE_EDIT: {
+        // Empty case for MESSAGE_EDIT
       } break
       case WAProto.Message.ProtocolMessage.Type.REVOKE: {
         let key = message.key
@@ -189,7 +190,7 @@ ${chalk.green('%s')} ${chalk.blueBright('to')} ${chalk.green('%s')} ${chalk.blac
     )
   if (/document/i.test(m.mtype))
     console.log(`📄 ${m.msg.fileName || m.msg.displayName || 'Document'}`)
-  else if (/ContactsArray/i.test(m.mtype)) console.log(`👨‍👩‍👧‍👦 ${' ' || ''}`)
+  else if (/ContactsArray/i.test(m.mtype)) console.log(`👨‍👩‍👧‍👦 Contacts`)
   else if (/contact/i.test(m.mtype)) console.log(`👨 ${m.msg.displayName || ''}`)
   else if (/audio/i.test(m.mtype)) {
     const duration = m.msg.seconds
