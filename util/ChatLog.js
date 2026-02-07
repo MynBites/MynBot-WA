@@ -93,20 +93,17 @@ ${chalk.green('%s')} ${chalk.blueBright('to')} ${chalk.green('%s')} ${chalk.blac
     if (message.type !== WAProto.Message.ProtocolMessage.Type.MESSAGE_EDIT) {
       console.log(chalk.black(chalk.bgWhite(WAProto.Message.ProtocolMessage.Type[message.type])))
     }
+    // prettier-ignore
     switch (message.type) {
-      case WAProto.Message.ProtocolMessage.Type.MESSAGE_EDIT:
-        {
+      case WAProto.Message.ProtocolMessage.Type.MESSAGE_EDIT: {
+      } break
+      case WAProto.Message.ProtocolMessage.Type.REVOKE: {
+        let key = message.key
+        let m = serialize(await this.store.loadMessage(key.remoteJid, key.id), this)
+        if (m) {
+          ChatLog.call(this, m)
         }
-        break
-      case WAProto.Message.ProtocolMessage.Type.REVOKE:
-        {
-          let key = message.key
-          let m = serialize(await this.store.loadMessage(key.remoteJid, key.id), this)
-          if (m) {
-            ChatLog.call(this, m)
-          }
-        }
-        break
+      } break
       default: {
         console.log(util.inspect(message, false, 99, true))
       }

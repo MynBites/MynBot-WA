@@ -259,66 +259,65 @@ export default function makeInMemoryStore(config) {
     })
 
     ev.on('messages.upsert', async ({ messages: newMessages, type }) => {
+      // prettier-ignore
       switch (type) {
         case 'append':
-        case 'notify':
-          {
-            const forEmit = []
-            const ops = []
-            const ops2 = []
-            for (const msg of newMessages) {
-              const jid = jidNormalizedUser(msg.key?.remoteJid)
-              if (!jid) continue
-              if (msg.messageStubType == WAMessageStubType.CIPHERTEXT) continue
+        case 'notify': {
+          const forEmit = []
+          const ops = []
+          const ops2 = []
+          for (const msg of newMessages) {
+            const jid = jidNormalizedUser(msg.key?.remoteJid)
+            if (!jid) continue
+            if (msg.messageStubType == WAMessageStubType.CIPHERTEXT) continue
 
-              let message = proto.WebMessageInfo.fromObject(msg)
-              // Clean Message
-              // delete message.message?.senderKeyDistributionMessage;
+            let message = proto.WebMessageInfo.fromObject(msg)
+            // Clean Message
+            // delete message.message?.senderKeyDistributionMessage;
 
-              ops.push({
-                updateOne: {
-                  filter: { id: msg.key?.id, jid },
-                  update: { $set: message },
-                  upsert: true,
-                },
+            ops.push({
+              updateOne: {
+                filter: { id: msg.key?.id, jid },
+                update: { $set: message },
+                upsert: true,
+              },
+            })
+
+            if (type == 'notify') {
+              let exp = getExpirationOfMessage(msg)
+              forEmit.push({
+                id: jid,
+                conversationTimestamp: msg.messageTimestamp,
+                unreadCount: message?.unreadCount || 1,
+                notify: msg.pushName || msg.verifiedBizName,
+                ...(exp ? { ephemeralExpiration: exp } : {}),
               })
-
-              if (type == 'notify') {
-                let exp = getExpirationOfMessage(msg)
-                forEmit.push({
-                  id: jid,
-                  conversationTimestamp: msg.messageTimestamp,
-                  unreadCount: message?.unreadCount || 1,
-                  notify: msg.pushName || msg.verifiedBizName,
-                  ...(exp ? { ephemeralExpiration: exp } : {}),
-                })
-                if (exp)
-                  ops2.push({
-                    updateOne: {
-                      filter: { id: jid },
-                      update: {
-                        $set: {
-                          id: jid,
-                          unreadCount: message?.unreadCount || 1,
-                          ephemeralExpiration: exp,
-                        },
+              if (exp)
+                ops2.push({
+                  updateOne: {
+                    filter: { id: jid },
+                    update: {
+                      $set: {
+                        id: jid,
+                        unreadCount: message?.unreadCount || 1,
+                        ephemeralExpiration: exp,
                       },
-                      upsert: true,
                     },
-                  })
-              }
+                    upsert: true,
+                  },
+                })
             }
-            if (ops.length) await messages.bulkWrite(ops)
-            const exists = await chats
-              .find({ id: { $not: { $in: forEmit.map((m) => m.id) } } })
-              .toArray()
-            ev.emit(
-              'chats.upsert',
-              exists.map((chat) => forEmit.find((m) => m.id == chat.id)).filter((m) => m),
-            )
-            if (ops2.length) await chats.bulkWrite(ops2)
           }
-          break
+          if (ops.length) await messages.bulkWrite(ops)
+          const exists = await chats
+            .find({ id: { $not: { $in: forEmit.map((m) => m.id) } } })
+            .toArray()
+          ev.emit(
+            'chats.upsert',
+            exists.map((chat) => forEmit.find((m) => m.id == chat.id)).filter((m) => m),
+          )
+          if (ops2.length) await chats.bulkWrite(ops2)
+        } break
       }
     })
 
@@ -380,47 +379,42 @@ export default function makeInMemoryStore(config) {
     })
 
     ev.on('group-participants.update', async ({ id, participants, action }) => {
+      // prettier-ignore
       switch (action) {
-        case 'add':
-          {
-            await groupMetadata.updateOne(
-              { id },
-              {
-                $push: {
-                  participants: { $each: participants.map((id) => ({ id, admin: null })) },
-                },
+        case 'add': {
+          await groupMetadata.updateOne(
+            { id },
+            {
+              $push: {
+                participants: { $each: participants.map((id) => ({ id, admin: null })) },
               },
-            )
-          }
-          break
+            },
+          )
+        } break
         case 'demote':
-        case 'promote':
-          {
-            await groupMetadata.updateOne(
-              { id, 'participants.id': { $in: participants } },
-              {
-                $set: {
-                  'participants.$[participant].admin': action == 'promote' ? 'admin' : null,
-                },
+        case 'promote': {
+          await groupMetadata.updateOne(
+            { id, 'participants.id': { $in: participants } },
+            {
+              $set: {
+                'participants.$[participant].admin': action == 'promote' ? 'admin' : null,
               },
-              {
-                arrayFilters: [{ 'participant.id': { $in: participants } }],
+            },
+            {
+              arrayFilters: [{ 'participant.id': { $in: participants } }],
+            },
+          )
+        } break
+        case 'remove': {
+          await groupMetadata.updateOne(
+            { id, 'participants.id': { $in: participants } },
+            {
+              $pull: {
+                participants: { id: { $in: participants } },
               },
-            )
-          }
-          break
-        case 'remove':
-          {
-            await groupMetadata.updateOne(
-              { id, 'participants.id': { $in: participants } },
-              {
-                $pull: {
-                  participants: { id: { $in: participants } },
-                },
-              },
-            )
-          }
-          break
+            },
+          )
+        } break
       }
     })
 

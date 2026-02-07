@@ -256,59 +256,44 @@ export class Connection {
         for (const eventName in events) {
           const event = events[eventName]
           try {
+            // prettier-ignore
             switch (eventName) {
-              case 'call':
-                {
-                  await onCall.call(this.conn, event)
+              case 'call': {
+                await onCall.call(this.conn, event)
+              } break
+              case 'connection.update': {
+                await this.connectionUpdate(event)
+              } break
+              case 'creds.update': {
+                await this.auth.saveCreds()
+              } break
+              case 'group-participants.update': {
+                await onParticipantsUpdate.call(this.conn, event)
+              } break
+              case 'groups.update': {
+                await onGroupUpdate.call(this.conn, event)
+              } break
+              case 'messages.upsert': {
+                for (let m of event.messages) {
+                  m = serialize(m, this.conn, this.getJidFromLid.bind(this.conn)) || m
+                  onMessage.call(this.conn, m)
                 }
-                break
-              case 'connection.update':
-                {
-                  await this.connectionUpdate(event)
-                }
-                break
-              case 'creds.update':
-                {
-                  await this.auth.saveCreds()
-                }
-                break
-              case 'group-participants.update':
-                {
-                  await onParticipantsUpdate.call(this.conn, event)
-                }
-                break
-              case 'groups.update':
-                {
-                  await onGroupUpdate.call(this.conn, event)
-                }
-                break
-              case 'messages.upsert':
-                {
-                  for (let m of event.messages) {
-                    m = serialize(m, this.conn, this.getJidFromLid.bind(this.conn)) || m
-                    onMessage.call(this.conn, m)
-                  }
-                }
-                break
-              case 'messages.delete.me':
-                {
-                  const keys = Array.isArray(event.keys)
-                    ? event.keys
-                    : Array.isArray(event)
-                      ? event
-                      : [event]
-                  for (const key of keys) onDeleteUpdate.bind(conn, key)
-                }
-                break
+              } break
+              case 'messages.delete.me': {
+                const keys = Array.isArray(event.keys)
+                  ? event.keys
+                  : Array.isArray(event)
+                    ? event
+                    : [event]
+                for (const key of keys) onDeleteUpdate.bind(conn, key)
+              } break
               case 'chats.upsert':
               case 'chats.update':
               case 'message-receipt.update':
               case 'presence.update':
-              case 'contacts.update':
-                {
-                  // console.log(event)
-                }
-                break
+              case 'contacts.update': {
+                // console.log(event)
+              } break
               default: {
                 this.logger.info(`[${eventName}]:`, event)
               }
