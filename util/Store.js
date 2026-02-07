@@ -268,7 +268,7 @@ export default function makeInMemoryStore(config) {
           for (const msg of newMessages) {
             const jid = jidNormalizedUser(msg.key?.remoteJid)
             if (!jid) continue
-            if (msg.messageStubTybe == WAMessageStubType.CIPHERTEXT) continue
+            if (msg.messageStubType == WAMessageStubType.CIPHERTEXT) continue
 
             let message = proto.WebMessageInfo.fromObject(msg)
             // Clean Message
@@ -325,7 +325,7 @@ export default function makeInMemoryStore(config) {
         .filter(
           ({ key, update }) =>
             isJid(jidNormalizedUser(key?.remoteJid)) &&
-            update?.messageStubTybe != WAMessageStubType.REVOKE,
+            update?.messageStubType != WAMessageStubType.REVOKE,
         )
         .map(({ key, update }) => {
           const jid = jidNormalizedUser(key?.remoteJid)
@@ -521,7 +521,7 @@ export default function makeInMemoryStore(config) {
       jid = jidNormalizedUser(jid) || jid
       const contact = await contacts.findOne({ id: jid })
       let url = AVATAR
-      if ((contact && !contact.imgUrl) || /changed/.test(contacts.imgUrl)) {
+      if ((contact && !contact.imgUrl) || /changed/.test(contact.imgUrl)) {
         url = await conn?.profilePictureUrl(jid, 'image').catch((_) => AVATAR)
         await contacts.updateOne({ id: jid }, { $set: { imgUrl: url } }, { upsert: true })
       }

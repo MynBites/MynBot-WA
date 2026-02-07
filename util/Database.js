@@ -46,15 +46,18 @@ const client = new MongoClient(uri, {
   },
 })
 
-await client.connect()
-process.on('beforeExit', async () => {
-  try {
-    await client.close()
-  } catch (error) {
-    console.error('Error closing MongoDB connection:', error)
-  } finally {
-    process.exit(0)
-  }
-})
+// Only auto-connect if not in test environment
+if (process.env.NODE_ENV !== 'test') {
+  await client.connect()
+  process.on('beforeExit', async () => {
+    try {
+      await client.close()
+    } catch (error) {
+      console.error('Error closing MongoDB connection:', error)
+    } finally {
+      process.exit(0)
+    }
+  })
+}
 
 export default client

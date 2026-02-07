@@ -28,7 +28,7 @@ export default [
     rules: {
       semi: ['error', 'never'],
       quotes: ['error', 'single', { avoidEscape: true }],
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       'prettier/prettier': 'error',
       'no-empty-pattern': 'warn',
       'no-setter-return': 'off', // Allow setter returns for property definitions
