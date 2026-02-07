@@ -39,7 +39,7 @@ if (process.env.NODE_ENV !== 'test') {
 
   process.on('unhandledRejection', console.error)
 } else {
-  // In test mode, just load plugins without starting connection
+  // In test mode, load plugins without watching (false) to allow process to exit
   serialize()
-  await plugin.addPluginFolder('./plugins', true)
+  await plugin.addPluginFolder('./plugins', false)
 }
