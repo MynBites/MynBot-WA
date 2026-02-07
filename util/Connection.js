@@ -319,9 +319,14 @@ export class Connection {
   async connectionUpdate({ isNewLogin, connection, lastDisconnect, qr }) {
     // console.log({ isNewLogin, connection, lastDisconnect, qr })
     if (isNewLogin) return this.reload(true)
-    if (qr && this.options.printQRInTerminal) qrcode.generate(qr, { small: true })
-    if (connection) {
+    if (qr) {
       this.qr = qr
+      if (this.options.printQRInTerminal) {
+        qrcode.generate(qr, { small: true })
+        this.logger.info('QR Code generated successfully - scan to connect')
+      }
+    }
+    if (connection) {
       this.logger[connection == 'close' ? 'error' : 'info'](
         `[ ${this.conn.user?.id} ] Connection`,
         connection,
@@ -336,6 +341,8 @@ export class Connection {
         )
           await this.disconnect(true, true)
         else if (/:/.test(this.conn.user?.id)) await this.reload(true, this.options)
+      } else if (connection == 'open') {
+        this.logger.info('✓ Connection opened successfully')
       }
     }
   }

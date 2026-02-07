@@ -32,7 +32,9 @@ if (process.env.NODE_ENV !== 'test') {
   if (isPair) {
     console.log('Found env variable NUMBER with value', isPair)
     await new Promise((resolve) => setTimeout(resolve, 2000))
-    console.log('Your pairing code:', await Conn.getCode(process.env.NUMBER))
+    const pairingCode = await Conn.getCode(process.env.NUMBER)
+    console.log('Your pairing code:', pairingCode)
+    console.log('✓ Pairing code generated successfully')
   }
 
   process.on('unhandledRejection', console.error)
