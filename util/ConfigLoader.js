@@ -1,5 +1,5 @@
 export const prefix = /^[!.?]/
-export const owner = [...process.env.OWNER?.split(','), '']
+export const owner = [...(process.env.OWNER?.split(',') || []), '']
 export const Sticker = {
   packname: 'Sticker by MynBot',
   author: 'MynBot',

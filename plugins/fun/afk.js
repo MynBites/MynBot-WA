@@ -1,5 +1,5 @@
 import { jidDecode } from '@whiskeysockets/baileys'
-import plugin from '../index.js'
+import plugin from '../../index.js'
 
 plugin.add('afk', {
   help: ['afk [alasan]', 'afk'],
@@ -7,7 +7,7 @@ plugin.add('afk', {
   async middleware(m, _options) {
     const contact = (await this.store.contacts.findOne({ id: m.sender })) || {}
     if (contact.afk) {
-      await this.store.contacts.updateOne({ id: m.sender }, { $set: { afk: null }})
+      await this.store.contacts.updateOne({ id: m.sender }, { $set: { afk: null } })
       m.reply(`@${jidDecode(m.sender).user} is no longer AFK after ${contact.afk.reason}`, {
         mentions: [m.sender],
       })
@@ -28,14 +28,17 @@ plugin.add('afk', {
     }
   },
   async onCommand(m, { text }) {
-    await this.store.contacts.updateOne({ update: m.sender }, {
-      $set: {
-        afk: {
-          time: Date.now(),
-          reason: text || 'AFK',
+    await this.store.contacts.updateOne(
+      { update: m.sender },
+      {
+        $set: {
+          afk: {
+            time: Date.now(),
+            reason: text || 'AFK',
+          },
         },
-      }
-    })
+      },
+    )
     m.reply(`@${jidDecode(m.sender).user} is now AFK${text ? `: ${text}` : ''}`, null, {
       mentions: [m.sender],
     })

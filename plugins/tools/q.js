@@ -1,5 +1,5 @@
-import { plugin } from '../index.js'
-import Lang from '../util/Language.js'
+import { plugin } from '../../index.js'
+import Lang from '../../util/Language.js'
 
 plugin.add('q', {
   help: ['q'],

@@ -17,7 +17,13 @@ import {
 import qrcode from 'qrcode-terminal'
 import makeInMemoryStore from './Store.js'
 import { serialize } from './Message.js'
-import { onCall, onGroupUpdate, onMessage, onParticipantsUpdate } from './Handlers.js'
+import {
+  onCall,
+  onGroupUpdate,
+  onMessage,
+  onParticipantsUpdate,
+  onDeleteUpdate,
+} from './Handlers.js'
 import { toPhoneNumber } from './Util.js'
 // import createAuthState from './AuthState.js'
 import client from './Database.js'
@@ -76,7 +82,9 @@ export class Connection {
       P.child({ class: 'Connection' }).info(
         `using WA v${WA_VERSION.version.join('.')}, isLatest: ${WA_VERSION.isLatest}`,
       )
-    let { printQRInTerminal: _printQRInTerminal, ..._socketOptions } = options
+
+    // eslint-disable-next-line no-unused-vars
+    let { printQRInTerminal: _, ..._socketOptions } = options
     this.options = options
     // this.auth = await createAuthState(this.db)
     const authFolder = path.join(import.meta.dirname, '../sessions/' + this.sessionName)
@@ -259,7 +267,7 @@ export class Connection {
             // prettier-ignore
             switch (eventName) {
               case 'call': {
-                await onCall.call(this.conn, event)
+                await onCall?.call(this.conn, event)
               } break
               case 'connection.update': {
                 await this.connectionUpdate(event)
@@ -268,15 +276,15 @@ export class Connection {
                 await this.auth.saveCreds()
               } break
               case 'group-participants.update': {
-                await onParticipantsUpdate.call(this.conn, event)
+                await onParticipantsUpdate?.call(this.conn, event)
               } break
               case 'groups.update': {
-                await onGroupUpdate.call(this.conn, event)
+                await onGroupUpdate?.call(this.conn, event)
               } break
               case 'messages.upsert': {
                 for (let m of event.messages) {
                   m = serialize(m, this.conn, this.getJidFromLid.bind(this.conn)) || m
-                  onMessage.call(this.conn, m)
+                  onMessage?.call(this.conn, m)
                 }
               } break
               case 'messages.delete.me': {
@@ -285,9 +293,9 @@ export class Connection {
                   : Array.isArray(event)
                     ? event
                     : [event]
-                for (const _key of keys) {
+                for (const key of keys) {
                   // Note: onDeleteUpdate is not defined, commenting out for now
-                  // onDeleteUpdate.bind(conn, _key)
+                  onDeleteUpdate?.bind(this.conn, key)
                 }
               } break
               case 'chats.upsert':

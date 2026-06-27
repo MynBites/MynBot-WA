@@ -1,6 +1,6 @@
 import syntaxError from 'syntax-error'
 import { format } from 'util'
-import { plugin, Conn } from '../index.js'
+import { plugin, Conn } from '../../index.js'
 import baileys from '@whiskeysockets/baileys'
 
 const AsyncFunction = (async () => {}).constructor
@@ -10,6 +10,7 @@ function execute(code, _this, providedVariables) {
   let exec = AsyncFunction(...keys, code)
   return exec.apply(_this, values)
 }
+
 plugin.add('eval', {
   prefix: /^=?> /,
   command: false,

@@ -1,4 +1,4 @@
-import plugin from '../index.js'
+import plugin from '../../index.js'
 import os from 'os'
 import v8 from 'v8'
 import { sizeFormatter } from 'human-readable'

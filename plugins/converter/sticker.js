@@ -1,11 +1,11 @@
-import { plugin } from '../index.js'
-import { sticker, addExif } from '../util/Sticker.js'
-import { Sticker } from '../util/ConfigLoader.js'
-import Lang from '../util/Language.js'
+import { plugin } from '../../index.js'
+import { sticker, addExif } from '../../util/Sticker.js'
+import { Sticker } from '../../util/ConfigLoader.js'
+import Lang from '../../util/Language.js'
 
 /**
  * Sticker plugin - converts images/videos to WhatsApp stickers
- * @type {import('../types.js').PluginData}
+ * @type {import('../../types.js').PluginData}
  */
 plugin.add('sticker', {
   help: ['sticker'],
@@ -14,7 +14,7 @@ plugin.add('sticker', {
   /**
    * Handle sticker command
    * @this {import('@whiskeysockets/baileys').WASocket}
-   * @param {import('../types.js').WebMessageInfo} m - The message
+   * @param {import('../../types.js').WebMessageInfo} m - The message
    */
   async onCommand(m) {
     let q = m.quoted ? m.quoted : m

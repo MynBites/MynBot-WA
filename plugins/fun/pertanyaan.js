@@ -1,4 +1,4 @@
-import plugin from '../index.js'
+import plugin from '../../index.js'
 
 const masa = [
   ['detik', 60],

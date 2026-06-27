@@ -59,9 +59,15 @@ export default async function ChatLog(m) {
     content = inner.message
   }
   const lastType = content ? Object.keys(content) : []
-  content ? types.push((lastType.length === 1 ? lastType : lastType.filter(key => {
-    return !key.includes('SenderKey')
-  }))?.[0]) : ''
+  content
+    ? types.push(
+        (lastType.length === 1
+          ? lastType
+          : lastType.filter((key) => {
+              return !key.includes('SenderKey')
+            }))?.[0],
+      )
+    : ''
   console.log(
     `
 ${chalk.redBright('%s')} ${chalk.black(chalk.bgYellow('%s'))} ${chalk.black(chalk.bgGreen('%s'))} ${chalk.magenta('%s [%s %sB]')}

@@ -41,6 +41,7 @@
     "awesome-phonenumber": "^7.5.0",
     "chalk": "^5.4.1",
     "cheerio": "^1.0.0",
+    "dotenv": "^17.4.2",
     "got": "^14.4.6",
     "got-scraping": "^4.1.1",
     "human-readable": "^0.2.1",

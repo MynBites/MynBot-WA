@@ -1,5 +1,5 @@
-import { plugin } from '../index.js'
-import { got } from '../util/Scraper.js'
+import { plugin } from '../../index.js'
+import { got } from '../../util/Scraper.js'
 import util from 'util'
 
 plugin.add('get', {

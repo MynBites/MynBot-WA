@@ -1,6 +1,7 @@
 import PluginManager from '@mynbites/plugin-manager'
 import { Connection } from './util/Connection.js'
 import { serialize } from './util/Message.js'
+import 'dotenv/config'
 
 /**
  * Plugin manager instance
