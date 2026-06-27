@@ -1,7 +1,6 @@
 import PluginManager from '@mynbites/plugin-manager'
 import { Connection } from './util/Connection.js'
 import { serialize } from './util/Message.js'
-// import Database from './util/Database.js'
 
 /**
  * Plugin manager instance

@@ -43,7 +43,7 @@ plugin.add('eval', {
       if (err) _syntax = '```' + err + '```\n\n'
       _return = e
     } finally {
-      this.sendMessage(m.chat, { text: _syntax + format(_return) }, { quoted: m })
+      m.reply(_syntax + format(_return))
     }
   },
 })

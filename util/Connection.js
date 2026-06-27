@@ -327,15 +327,25 @@ export class Connection {
       }
     }
     if (connection) {
+      const statusCode = lastDisconnect?.error?.output?.payload?.statusCode
+      const streamErrorCode = lastDisconnect?.error?.fullErrorNode?.attrs?.code
+      const shouldRestart =
+        statusCode == 503 ||
+        streamErrorCode == '503' ||
+        /stream errored/i.test(lastDisconnect?.error?.message || '') ||
+        /connection terminated/i.test(lastDisconnect?.error?.message || '')
+
       this.logger[connection == 'close' ? 'error' : 'info'](
         `[ ${this.conn.user?.id} ] Connection`,
         connection,
-        lastDisconnect?.error?.output?.payload?.statusCode || '',
+        statusCode || streamErrorCode || '',
         lastDisconnect?.error?.output?.payload?.error || '',
         lastDisconnect?.error?.output?.payload?.message || '',
       )
       if (connection == 'close') {
-        if (
+        if (shouldRestart) {
+          await this.reload(true, this.options)
+        } else if (
           lastDisconnect?.error?.output?.payload?.statusCode == DisconnectReason.loggedOut ||
           /failure/i.test(lastDisconnect?.error?.output?.payload?.message)
         )

@@ -116,14 +116,15 @@ export async function onMessage(m) {
     }
     let isError = false
     try {
-      await m.react('⏳')
+      if (!Plugin.disableAutoReact) await m.react('⏳')
       await Plugin.onCommand?.call(this, m, options)
+      m.isCommand = true
     } catch (e) {
-      isError = e
+      m.error = isError = e
       m.reply(format(e))
       console.error(e)
     } finally {
-      await m.react(isError ? '❌' : '✅')
+      if (!Plugin.disableAutoReact) await m.react(isError ? '❌' : '✅')
     }
   }
   ChatLog.call(this, m)
