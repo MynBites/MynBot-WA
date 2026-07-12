@@ -1,17 +1,17 @@
 import PluginManager from '@mynbites/plugin-manager'
 import {
   BaileysEventMap,
+  GroupParticipant,
   GroupMetadata,
   WASocket,
   proto,
   WAMessageContent,
   MiscMessageGenerationOptions,
 } from '@whiskeysockets/baileys'
+import Db from 'mongodb'
 
-type CustomPermission = (
-  this: ThisParameterType<PluginData['onCommand']>,
-  ...args: Parameters<PluginData['onCommand']>
-) => boolean
+type CustomPermission = (this: WASocket, message?: WebMessageInfo, options?: Options) => boolean | Promise<boolean>
+
 type Permissions =
   | 'rowner'
   | 'owner'
@@ -27,12 +27,20 @@ type Permissions =
 interface Options {
   prefix: string
   noPrefix: string
+  match: RegExpMatchArray
   command: string
   text: string
   args: string[]
 
-  groupMetadata: GroupMetadata
   permission: Permissions[]
+  groupMetadata?: GroupMetadata
+  participants?: GroupParticipant[]
+
+  Users: Db.Collection<Db.Document>
+  Chats: Db.Collection<Db.Document>
+
+  User: Db.Document
+  Chat: Db.Document
 }
 
 type PluginData = {
@@ -41,9 +49,12 @@ type PluginData = {
   permission?: Permissions[]
   priority?: number
 
-  help?: string[]
+  disableAutoReact?: boolean
+
+  help?: string | string[]
   type?: string
 
+  middleware?(this: WASocket, message?: WebMessageInfo, options?: Options): any
   onCommand?(this: WASocket, message?: WebMessageInfo, options?: Options): any
   onCall?(this: WASocket, event: BaileysEventMap['call']): any
   onGroupUpdate?: (this: WASocket, metadata: BaileysEventMap['groups.update']) => any
@@ -51,6 +62,7 @@ type PluginData = {
     this: WASocket,
     metadata: BaileysEventMap['group-participants.update'],
   ) => any
+  onFail?: (this: WASocket, message?: WebMessageInfo, options?: { reason: string } & Options) => any
 }
 
 export interface plugin extends PluginManager {
