@@ -1,0 +1,282 @@
+{
+  "currency": "IDR",
+  "permission": {
+    "denied": "Anda tidak memiliki izin untuk mengakses perintah ini.\nAlasan: {reason}",
+    "reason": {
+      "rowner": "Perintah ini hanya dapat digunakan oleh pemilik server.",
+      "owner": "Perintah ini hanya dapat digunakan oleh pemilik bot.",
+      "admin": "Perintah ini hanya dapat digunakan oleh admin grup.",
+      "botAdmin": "Perintah ini hanya dapat digunakan jika bot adalah admin grup.",
+      "premium": "Perintah ini hanya dapat digunakan oleh pengguna premium.",
+      "group": "Perintah ini hanya dapat digunakan di grup.",
+      "private": "Perintah ini hanya dapat digunakan di pesan pribadi.",
+      "reply": "Anda harus membalas pesan untuk menggunakan perintah ini."
+    }
+  },
+  "check": {
+    "unquoted": "Pesan yang anda balas tidak mengandung balasan.",
+    "quoteNotFound": "Pesan yang anda balas tidak ditemukan.",
+    "noMedia": "Pesan yang anda balas tidak berupa {mediaType}."
+  },
+  "mediaType": {
+    "image": "gambar",
+    "video": "video",
+    "audio": "audio",
+    "document": "dokumen",
+    "sticker": "stiker"
+  },
+  "time": {
+    "second": "detik",
+    "minute": "menit",
+    "hour": "jam",
+    "day": "hari",
+    "week": "minggu",
+    "month": "bulan",
+    "year": "tahun",
+    "decade": "dekade",
+    "century": "abad",
+    "millennium": "milenium"
+  },
+  "categories": {
+    "all": "Semua",
+    "fun": "Hiburan",
+    "group": "Grup",
+    "rpg": "RPG",
+    "sticker": "Stiker",
+    "tools": "Alat",
+    "owner": "Pemilik Bot"
+  },
+  "plugins": {
+    "menu": {
+      "name": "Menu",
+      "description": "Menampilkan daftar perintah yang tersedia.",
+      "arguments": [
+        {
+          "name": "kategori",
+          "optional": true,
+          "description": "Kategori perintah yang akan ditampilkan (default: semua)"
+        }
+      ]
+    },
+    "group-add": {
+      "name": "Tambah",
+      "description": "Menambahkan pengguna ke grup.",
+      "usageDescription": "Penggunaan: `add <nomor>`\nContoh: `add 6281234567890`",
+      "arguments": [
+        {
+          "name": "nomor",
+          "description": "Nomor telepon pengguna yang akan ditambahkan (format: 6281234567890)",
+          "error": {
+            "blank": "Nomor telepon tidak boleh kosong.",
+            "invalid": "Nomor telepon tidak valid. Harap gunakan format: 6281234567890"
+          }
+        }
+      ],
+      "error": {
+        "already-in-group": "Pengguna sudah ada di grup.",
+        "not-registered": "Pengguna tidak terdaftar di WhatsApp.",
+        "recently-left": "Pengguna baru-baru ini keluar dari grup.",
+        "unknown": "Terjadi kesalahan tidak dikenal (status: {status}).",
+        "group-full": "Grup sudah penuh (maksimal 1023 anggota)."
+      },
+      "message": {
+        "success": "Berhasil menambahkan {number} ke grup.",
+        "invite": "Tidak dapat menambahkan {number} ke grup. Mengirim undangan sebagai gantinya.",
+        "invite-caption": "Undangan untuk bergabung ke grup WhatsApp saya"
+      }
+    },
+    "group-kick-promote-demote": {
+      "name": "Keluar / Promosi / Penurunan",
+      "description": "Mengeluarkan/mempromosikan/menurunkan pengguna dari grup.",
+      "usageDescription": "Penggunaan: `kick <nomor>`\nContoh: `kick @6281234567890`",
+      "arguments": [
+        {
+          "name": "nomor",
+          "type": ["string", "mention"],
+          "description": "Nomor telepon pengguna (format: 6281234567890)",
+          "error": {
+            "blank": "Nomor telepon tidak boleh kosong.",
+            "invalid": "Nomor telepon tidak valid. Harap gunakan format: 6281234567890"
+          }
+        }
+      ],
+      "error": {
+        "not-in-group": "Pengguna tidak ada di grup.",
+        "super-admin": "Tidak dapat mengeluarkan admin utama grup.",
+        "already-admin": "Pengguna sudah menjadi admin.",
+        "not-admin": "Pengguna bukan admin."
+      },
+      "message": {
+        "success": {
+          "kick": "Berhasil mengeluarkan @{number} dari grup.",
+          "promote": "Berhasil mempromosikan @{number} menjadi admin grup.",
+          "demote": "Berhasil menurunkan @{number} dari admin grup."
+        }
+      }
+    },
+    "fun-pertanyaan": {
+      "name": "Pertanyaan Acak",
+      "description": "Menjawab pertanyaan acak.",
+      "arguments": [
+        {
+          "type": "string",
+          "name": "pertanyaan",
+          "description": "Pertanyaan yang ingin diajukan."
+        }
+      ],
+      "message": {
+        "time": "_{duration} {timeFormat} lagi..._",
+        "chance": {
+          "yes": "Ya.",
+          "no": "Tidak.",
+          "maybe": "Mungkin.",
+          "ofcourse": "Tentu saja.",
+          "ofcourseNot": "Tentu saja tidak.",
+          "unknown": "Saya tidak tahu.",
+          "askAgain": "Tanyakan lagi nanti.",
+          "bigChanceYes": "Kemungkinan besar iya.",
+          "lowChanceYes": "Kemungkinan kecil iya.",
+          "bigChanceNo": "Kemungkinan besar tidak.",
+          "lowChanceNo": "Kemungkinan kecil tidak.",
+          "askSomeoneElse": "Tanyakan pada orang lain.",
+          "askYourself": "Tanyakan pada dirimu sendiri.",
+          "askGod": "Tanyakan pada Tuhan.",
+          "askUniverse": "Tanyakan pada alam semesta."
+        }
+      }
+    },
+    "eval": {
+      "name": "Evaluasi Kode",
+      "description": "Evaluasi kode JavaScript.",
+      "usageDescription": "Penggunaan: `> <kode>`"
+    },
+    "sticker": {
+      "name": "Pembuat Stiker",
+      "description": "Membuat stiker dari gambar atau video.",
+      "usageDescription": "Penggunaan: Kirim atau balas gambar/video dengan perintah ini.",
+      "error": {
+        "invalid": "Media yang diberikan tidak valid. Harap kirim atau balas gambar atau video."
+      }
+    },
+    "rpg": {
+      "name": "RPG",
+      "description": "Permainan RPG sederhana.",
+      "message": {
+        "notHave": "Tidak punya",
+        "cooldown": "Anda sudah melakukan *{type}* hari ini. Silakan coba lagi dalam _{time}_"
+      }
+    },
+    "rpg-inv": {
+      "name": "Inventaris",
+      "description": "Menampilkan inventaris RPG Anda.",
+      "message": {
+        "empty": "Inventaris Anda kosong.",
+        "item": {
+          "name": "Nama",
+          "amount": "Jumlah",
+          "description": "Deskripsi"
+        }
+      },
+      "names": {
+        "progress": "Kemajuan",
+        "level": "Level",
+        "exp": "EXP",
+        "limit": "Limit",
+        "stats": {
+          "health": "Nyawa",
+          "armor": "Armour"
+        },
+        "pet": {
+          "name": "Hewan Peliharaan",
+          "cat": "Kucing",
+          "dog": "Anjing",
+          "fox": "Rubah",
+          "wolf": "Serigala",
+          "dragon": "Naga",
+          "horse": "Kuda",
+          "phoenix": "Phoenix",
+          "griffin": "Griffin",
+          "kyubi": "Kyubi",
+          "centaur": "Centaur"
+        },
+        "crate": {
+          "name": "Kotak",
+          "box": "Peti",
+          "common": "Umum",
+          "uncommon": "Tidak Umum",
+          "mythic": "Mitik",
+          "legendary": "Legendaris",
+          "pet": "Hewan Peliharaan",
+          "garden": "Kebun"
+        },
+        "food": {
+          "name": "Makanan",
+          "pet": "Hewan Peliharaan"
+        },
+        "fruits": {
+          "name": "Buah - buahan",
+          "grapes": "Anggur",
+          "oranges": "Jeruk",
+          "apples": "Apel",
+          "mangoes": "Mangga",
+          "bananas": "Pisang"
+        },
+        "seeds": "Benih",
+        "trashMan": {
+          "name": "Pengumpul Sampah",
+          "cardboard": "Kardus",
+          "bottle": "Botol",
+          "can": "Kaleng"
+        },
+        "economy": {
+          "name": "Ekonomi",
+          "bank": "Bank",
+          "money": "Uang",
+          "coupon": "Kupon",
+          "ticket": "Tiket",
+          "coin": "Koin"
+        },
+        "weapons": {
+          "name": "Senjata",
+          "sword": "Pedang"
+        },
+        "material": {
+          "name": "Bahan",
+          "string": "Tali",
+          "can": "Kaleng",
+          "wood": "Kayu",
+          "rock": "Batu",
+          "iron": "Besi",
+          "diamond": "Berlian",
+          "gold": "Emas"
+        },
+        "hero": "Pahlawan"
+      }
+    },
+    "rpg-adventure": {
+      "name": "Petualangan",
+      "description": "Memulai petualangan RPG.",
+      "message": {
+        "success": "Anda telah berhasil menyelesaikan petualangan di *{place}*.",
+        "rareCrate": "Selamat! Anda menemukan sebuah *Rare Crate*!"
+      }
+    },
+    "rpg-heal": {
+      "name": "Menyembuhkan",
+      "description": "Menyembuhkan diri sendiri.",
+      "message": {
+        "potionNotEnough": "Anda tidak memiliki cukup *{amount}* ramuan untuk menyembuhkan diri sendiri.",
+        "success": "Berhasil menyembuhkan diri sendiri sebesar *{amount}* HP dengan sebanyak *{amount}* ramuan."
+      }
+    },
+    "rpg-hunt": {
+      "name": "Berburu",
+      "description": "Berburu monster untuk mendapatkan pengalaman dan uang.",
+      "message": {
+        "success": "Anda berhasil membunuh *{monster}* dan mendapatkan *{exp}* EXP, *{money}*, dan kehilangan *{healthCost}* HP.",
+        "death": "Anda telah mati karena diserang oleh *{killer}*. Anda kehilangan semua uang dan HP Anda tereset.",
+        "deathPenalty": "Anda turun ke level *{level}*, dan kehilangan semua EXP."
+      }
+    }
+  }
+}

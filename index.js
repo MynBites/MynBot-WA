@@ -1,7 +1,8 @@
+import 'dotenv/config'
 import PluginManager from '@mynbites/plugin-manager'
 import { Connection } from './util/Connection.js'
 import { serialize } from './util/Message.js'
-import 'dotenv/config'
+import client from './util/Database.js'
 
 /**
  * Plugin manager instance
@@ -9,16 +10,15 @@ import 'dotenv/config'
  */
 export const plugin = new PluginManager(import.meta.dirname)
 
+const name = process.argv.slice(2).filter((v) => !v.startsWith('-'))[0] || 'default'
+
 /**
  * WhatsApp connection instance
  * @type {Connection}
  */
-export const Conn = new Connection(
-  process.env.NODE_ENV === 'test'
-    ? 'default'
-    : process.argv.slice(2).filter((v) => !v.startsWith('-'))[0] || 'default',
-)
-// export const db = new (Function)()
+export const Conn = new Connection(process.env.NODE_ENV === 'test' ? 'default' : name)
+
+export const db = client.db('MynBot-WA-' + (process.env.NODE_ENV === 'test' ? 'test' : name))
 
 export default plugin
 

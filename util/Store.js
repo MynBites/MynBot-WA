@@ -10,18 +10,33 @@ import baileys, {
   WAMessageStubType,
   isLidUser,
   proto,
+  isPnUser,
 } from '@whiskeysockets/baileys'
 
 const AVATAR = 'https://telegra.ph/file/7ce3f080ee6d1e58f7e33.png'
 
+/**
+ * Creates an in-memory store for managing WhatsApp data
+ * @param {{
+ *  db: import('mongodb').Db,
+ *  chats?: import('mongodb').Db['collection'],
+ *  messages?: import('mongodb').Db['collection'],
+ *  contacts?: import('mongodb').Db['collection'],
+ *  groupMetadata?: import('mongodb').Db['collection']
+ * }} config database configuration for the store
+ */
 export default function makeInMemoryStore(config) {
   /** @type {import('mongodb').Db} */
   const db = config.db
 
-  const chats = db.collection('chats')
-  const messages = db.collection('messages')
-  const contacts = db.collection('contacts')
-  const groupMetadata = db.collection('groupMetadata')
+  /** @type {import('mongodb').Db['collection']} */
+  const chats = config.chats || db.collection('chats')
+  /** @type {import('mongodb').Db['collection']} */
+  const messages = config.messages || db.collection('messages')
+  /** @type {import('mongodb').Db['collection']} */
+  const contacts = config.contacts || db.collection('contacts')
+  /** @type {import('mongodb').Db['collection']} */
+  const groupMetadata = config.groupMetadata || db.collection('groupMetadata')
   const ephemeralDuration = {}
   // Using Map for chats only
   let state = {},
@@ -40,7 +55,7 @@ export default function makeInMemoryStore(config) {
   }
 
   function isJid(id) {
-    return typeof id !== 'undefined' && !isJidBroadcast(id)
+    return isPnUser(id) || isLidUser(id) || isJidGroup(id)
   }
 
   async function getExpiration(id) {

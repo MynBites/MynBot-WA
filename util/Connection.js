@@ -62,11 +62,13 @@ export class Connection {
   /**
    * Create a new WhatsApp connection
    * @param {string} [name='default'] - Session name
+   * @param {boolean} [disableDeleteOnLogout=false] - Whether to disable message deletion on logout
    */
-  constructor(name = 'default') {
+  constructor(name = 'default', disableDeleteOnLogout = false) {
     this.sessionName = name
     this.logger = P.child({ class: this.sessionName })
     this.db = client.db('wa_db_' + this.sessionName)
+    this.disableDeleteOnLogout = disableDeleteOnLogout
   }
 
   /**
@@ -386,8 +388,10 @@ export class Connection {
     this.logger?.info('Close connection', isLogout ? 'logout' : '')
     if (isLogout) {
       if (!fromDevice) await this.conn.logout()
-      await this.auth?.clear?.()
-      await this.store?.clear?.()
+      if (!this.disableDeleteOnLogout) {
+        await this.auth?.clear?.()
+        await this.store?.clear?.()
+      }
       if (this.reconnectOnLogout) await this.reload(true, this.options)
     } else {
       this.conn.end()
