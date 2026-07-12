@@ -1,7 +1,8 @@
 import syntaxError from 'syntax-error'
 import { format } from 'util'
-import { plugin, Conn } from '../../index.js'
+import { plugin, Conn, db } from '../../index.js'
 import baileys from '@whiskeysockets/baileys'
+import Lang from '../../util/Language.js'
 
 const AsyncFunction = (async () => {}).constructor
 function execute(code, _this, providedVariables) {
@@ -11,7 +12,7 @@ function execute(code, _this, providedVariables) {
   return exec.apply(_this, values)
 }
 
-plugin.add('eval', {
+plugin.add('owner-eval', {
   prefix: /^=?> /,
   command: false,
   permission: ['rowner'],
@@ -29,6 +30,8 @@ plugin.add('eval', {
         Conn,
         plugin,
         baileys,
+        Lang,
+        db,
         print(...args) {
           if (--i < 1) return
           console.log(...args)

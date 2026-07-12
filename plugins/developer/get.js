@@ -2,7 +2,7 @@ import { plugin } from '../../index.js'
 import { got } from '../../util/Scraper.js'
 import util from 'util'
 
-plugin.add('get', {
+plugin.add('tools-get', {
   help: ['get <url>'],
   command: ['get'],
   type: 'developer',

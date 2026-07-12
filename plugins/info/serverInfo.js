@@ -20,7 +20,7 @@ const List = (data) =>
     .map((key) => `- *${key}:* ${data[key]}`)
     .join('\n')
 
-plugin.add('serverInfo', {
+plugin.add('info-serverInfo', {
   help: ['srv'],
   command: ['srv'],
   type: 'server',

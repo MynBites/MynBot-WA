@@ -19,7 +19,7 @@ plugin.add('sticker', {
   async onCommand(m) {
     let q = m.quoted ? m.quoted : m
     let mime = (q.msg || q).mimetype || q.mediaType || ''
-    if (!/image|video/.test(mime)) throw Lang.format('plugins.sticker.invalid')
+    if (!/image|video/.test(mime)) throw Lang.format('plugins.sticker.error.invalid')
     const buffer = await q.download()
     const packname = Sticker.packname || (await this.getName(q.sender))
     const author = (await this.getName(m.sender)) || Sticker.author

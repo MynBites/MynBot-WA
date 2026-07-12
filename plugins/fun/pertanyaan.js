@@ -1,40 +1,64 @@
 import plugin from '../../index.js'
+import Lang from '../../util/Language.js'
 
-const masa = [
-  ['detik', 60],
-  ['menit', 60],
-  ['jam', 24],
-  ['hari', 30],
-  ['bulan', 12],
-  ['tahun', 10],
-  ['dekade', 10],
-  ['abad', 10],
-  ['milinium', 10],
+const time = [
+  ['second', 60],
+  ['minute', 60],
+  ['hour', 24],
+  ['day', 30],
+  ['month', 12],
+  ['year', 10],
+  ['decade', 10],
+  ['century', 10],
+  ['millennium', 10],
 ]
 
-plugin.add('pertanyaan', {
-  help: ['apakah', 'kapankah', 'when'],
-  prefix: /^(apakah|kapankah|when)/i,
+plugin.add('fun-pertanyaan', {
+  help: [
+    'apakah',
+    'kapankah',
+    'when',
+    'is it',
+    'will it',
+    'can it',
+    'does it',
+    'do you',
+    'are you',
+  ],
+  prefix: /^(apakah|kapankah|when|is it|will it|can it|does it|do you|are you)/i,
   command: false,
   type: 'fun',
   async onCommand(m, { prefix }) {
     if (prefix.toLowerCase() === 'kapankah' || prefix.toLowerCase() === 'when') {
-      let selected = pickRandom(masa)
-      m.reply(`_${randRange(1, selected[1] - 1)} ${selected[0]} lagi..._`)
+      let [timeFormat, maxDuration] = pickRandom(time)
+      m.reply(
+        Lang.format('plugins.fun-pertanyaan.message.time', {
+          duration: randRange(1, maxDuration - 1),
+          timeFormat: Lang.format(`time.${timeFormat}`),
+        }),
+      )
     } else {
       m.reply(
-        pickRandom([
-          'Ya',
-          'Tidak',
-          'Mungkin saja',
-          'Bisa jadi',
-          'Tentu saja',
-          'Tentu tidak',
-          'Coba tanya lagi nanti',
-          'Saya tidak tahu',
-          'Kemungkinan besar iya',
-          'Kemungkinan besar tidak',
-        ]),
+        Lang.format(
+          'plugins.fun-pertanyaan.message.chance.' +
+            pickRandom([
+              'yes',
+              'no',
+              'maybe',
+              'ofcourse',
+              'ofcourseNot',
+              'unknown',
+              'askAgain',
+              'bigChanceYes',
+              'lowChanceYes',
+              'bigChanceNo',
+              'lowChanceNo',
+              'askSomeoneElse',
+              'askYourself',
+              'askGod',
+              'askUniverse',
+            ]),
+        ),
       )
     }
   },

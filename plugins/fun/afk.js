@@ -1,21 +1,22 @@
 import { jidDecode } from '@whiskeysockets/baileys'
 import plugin from '../../index.js'
 
-plugin.add('afk', {
-  help: ['afk [alasan]', 'afk'],
+plugin.add('fun-afk', {
+  help: ['afk'],
   command: 'afk',
-  async middleware(m, _options) {
-    const contact = (await this.store.contacts.findOne({ id: m.sender })) || {}
-    if (contact.afk) {
-      await this.store.contacts.updateOne({ id: m.sender }, { $set: { afk: null } })
-      m.reply(`@${jidDecode(m.sender).user} is no longer AFK after ${contact.afk.reason}`, {
+  async middleware(m, { Users }) {
+    let User = await Users.findOne({ id: m.sender })
+    if (!User) return
+    if (User.afk) {
+      await Users.updateOne({ id: m.sender }, { $set: { afk: null } }, { upsert: true })
+      m.reply(`@${jidDecode(m.sender).user} is no longer AFK after ${User.afk.reason}`, null, {
         mentions: [m.sender],
       })
     }
     if (m.mentionedJid && m.mentionedJid.includes(this.user.jid)) {
       const users = await Promise.all(
         m.mentionedJid.map(async (u) => {
-          const c = (await this.store.contacts.findOne({ id: u })) || {}
+          const c = (await Users.findOne({ id: u })) || {}
           if (c.afk) {
             return `@${jidDecode(u).user} is AFK${c.afk.reason ? `: ${c.afk.reason}` : ''} since ${new Date(c.afk.time).toLocaleString()}`
           }
@@ -27,9 +28,9 @@ plugin.add('afk', {
       }
     }
   },
-  async onCommand(m, { text }) {
-    await this.store.contacts.updateOne(
-      { update: m.sender },
+  async onCommand(m, { text, Users }) {
+    await Users.updateOne(
+      { id: m.sender },
       {
         $set: {
           afk: {
@@ -38,6 +39,7 @@ plugin.add('afk', {
           },
         },
       },
+      { upsert: true },
     )
     m.reply(`@${jidDecode(m.sender).user} is now AFK${text ? `: ${text}` : ''}`, null, {
       mentions: [m.sender],

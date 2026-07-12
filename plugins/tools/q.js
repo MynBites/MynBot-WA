@@ -1,7 +1,7 @@
 import { plugin } from '../../index.js'
 import Lang from '../../util/Language.js'
 
-plugin.add('q', {
+plugin.add('tools-q', {
   help: ['q'],
   type: 'tools',
   command: 'q',
