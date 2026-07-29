@@ -1,36 +1,44 @@
 import { plugin } from '../../index.js'
-import { canLevelUp, xpRange, multiplier } from './config.js'
+import Lang from '../../util/Language.js'
+import { Levelling } from './config.js'
 
 plugin.add('rpg-levelup', {
   async onCommand(m, { Users }) {
     const User = Users.findOne({ id: m.sender })
 
-    if (!canLevelUp(User.stats.level, User.stats.exp, multiplier)) {
-      let { min, xp, max } = xpRange(User.stats.level, multiplier)
-      throw `
-Level *${User.stats.level} (${User.stats.exp - min}/${xp})*
-Kurang *${max - User.stats.exp}* lagi!
-`.trim()
+    if (!Levelling.canLevelUp(User.stats.level, User.stats.exp)) {
+      let { min, xp, max } = Levelling.xpRange(User.stats.level)
+      throw Lang.format('plugins.rpg-levelup.message.cantLevel', {
+        level: User.stats.level,
+        curr: User.stats.exp - min,
+        xp,
+        needed: max - User.stats.exp,
+      })
     }
-    let before = User.stats.level * 1
-    while (canLevelUp(User.stats.level, User.stats.exp, multiplier)) User.stats.level++
-    if (before !== User.stats.level) {
-      User.role = global.rpg.role(User.stats.level).name
-      let teks = 'Selamat Kamu Naik Level!'
-      let str = `
-Selamat ${conn.getName(m.sender)}
-• 🧬Level Sebelumnya : ${before}
-• 🧬Level Baru : ${User.stats.level}
-• 🧬Role Kamu : ${User.role}
-• Pada Jam : ${new Date().toLocaleString('id-ID')}
-*_Semakin sering berinteraksi dengan bot Semakin Tinggi level kamu_*
-`.trim()
-      try {
-        const img = await levelup(teks, User.stats.level)
-        conn.sendFile(m.chat, img, 'levelup.jpg', str, m)
-      } catch (e) {
-        m.reply(str)
-      }
-    }
+    let level = 0
+    while (Levelling.canLevelUp(User.stats.level + level, User.stats.exp)) level++
+    if (level == 0) return
+    let role = Levelling.getRole(User.stats.level + level).name
+
+    await Users.updateOne(
+      { id: m.sender },
+      {
+        $inc: {
+          'rpg.stats.level': level,
+        },
+      },
+    )
+
+    // let teks = 'Selamat Kamu Naik Level!'
+    let caption = Lang.format('plugins.rpg-levelup.message.success', {
+      name: this.getName(m.sender),
+      prevLevel: User.stats.level,
+      newLevel: User.stats.level + level,
+      role,
+      time: new Date().toLocaleString(Lang.lang),
+    })
+    m.reply(caption)
+    // const img = await levelup(teks, User.stats.level)
+    // this.sendMessage(m.chat, { image, caption }, { quoted: m })
   },
 })

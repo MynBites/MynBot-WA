@@ -28,7 +28,7 @@ plugin.add('rpg-inv', {
     const f = (...keys) => Lang.format(`plugins.rpg-inv.names.${keys.join('.')}`)
 
     let str = `
-Inventory *${name}*
+  ${Lang.format('plugins.rpg-inv.message.title', { name })}
 
 ${f('stats.health')}: *${rpg.stats.health}/${MaxHealth}*
 ${f('stats.armor')}: *${getArmor(rpg.stats.armor)}*
@@ -73,7 +73,7 @@ ${Object.entries(rpg.material)
   .join('\n')}
 
 *${f('hero.name')}*
-My Hero: *${toStringLevel(rpg.hero.level, MaxLevel.Hero)}*
+${Lang.format('plugins.rpg-inv.message.myHero')}: *${toStringLevel(rpg.hero.level, MaxLevel.Hero)}*
 
 *${f('pet.name')}*
 ${Object.entries(rpg.pet)
@@ -97,7 +97,7 @@ ${Object.entries(rpg.pet)
   )
   .join('\n')}
 
-*Achievement*
+${Lang.format('plugins.rpg-inv.message.achievement')}
 ${(
   await Promise.all(
     [
@@ -109,9 +109,13 @@ ${(
       'crate.uncommon',
       'crate.mythic',
       'crate.legendary',
-    ].map(
-      async (key, index) =>
-        `${index + 1}. Top ${f(key)} *${await getLeaderboard(Users, `rpg.${key}`, deepGet(rpg, key))}* dari *${count}*`,
+    ].map(async (key, index) =>
+      Lang.format('plugins.rpg-inv.message.achievementLine', {
+        index: index + 1,
+        name: f(key),
+        position: await getLeaderboard(Users, `rpg.${key}`, deepGet(rpg, key)),
+        count,
+      }),
     ),
   )
 ).join('\n')}`.trim()
