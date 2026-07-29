@@ -1,4 +1,5 @@
 {
+  "currency": "IDR",
   "permission": {
     "denied": "You do not have permission to use this command.\nReason: {reason}",
     "reason": {
@@ -8,6 +9,394 @@
       "premium": "This command can only be used by premium users.",
       "group": "This command can only be used in groups.",
       "private": "This command can only be used in private messages."
+    }
+  },
+  "check": {
+    "unquoted": "The message you replied to does not contain a quote.",
+    "quoteNotFound": "The message you replied to was not found.",
+    "noMedia": "The message you replied to is not a {mediaType}."
+  },
+  "mediaType": {
+    "image": "image",
+    "video": "video",
+    "audio": "audio",
+    "document": "document",
+    "sticker": "sticker"
+  },
+  "time": {
+    "second": "second",
+    "minute": "minute",
+    "hour": "hour",
+    "day": "day",
+    "week": "week",
+    "month": "month",
+    "year": "year",
+    "decade": "decade",
+    "century": "century",
+    "millennium": "millennium"
+  },
+  "categories": {
+    "all": "All",
+    "fun": "Fun",
+    "group": "Group",
+    "rpg": "RPG",
+    "sticker": "Sticker",
+    "tools": "Tools",
+    "owner": "Bot Owner"
+  },
+  "plugins": {
+    "menu": {
+      "name": "Menu",
+      "description": "Show a list of available commands.",
+      "arguments": [
+        {
+          "name": "category",
+          "optional": true,
+          "description": "Command category to display (default: all)"
+        }
+      ]
+    },
+    "group-add": {
+      "name": "Add",
+      "description": "Add a user to the group.",
+      "usageDescription": "Usage: `add <number>`\nExample: `add 6281234567890`",
+      "arguments": [
+        {
+          "name": "number",
+          "description": "Phone number of the user to add (format: 6281234567890)",
+          "error": {
+            "blank": "Phone number cannot be empty.",
+            "invalid": "Invalid phone number. Use format: 6281234567890"
+          }
+        }
+      ],
+      "error": {
+        "already-in-group": "User is already in the group.",
+        "not-registered": "User is not registered on WhatsApp.",
+        "recently-left": "User recently left the group.",
+        "unknown": "An unknown error occurred (status: {status}).",
+        "group-full": "Group is full (maximum 1023 members)."
+      },
+      "message": {
+        "success": "Successfully added {number} to the group.",
+        "invite": "Cannot add {number} to the group. Sending an invite instead.",
+        "invite-caption": "Invitation to join my WhatsApp group"
+      }
+    },
+    "group-kick-promote-demote": {
+      "name": "Kick / Promote / Demote",
+      "description": "Kick, promote, or demote a user in the group.",
+      "usageDescription": "Usage: `kick <number>`\nExample: `kick @6281234567890`",
+      "arguments": [
+        {
+          "name": "number",
+          "type": ["string", "mention"],
+          "description": "Phone number of the user (format: 6281234567890)",
+          "error": {
+            "blank": "Phone number cannot be empty.",
+            "invalid": "Invalid phone number. Use format: 6281234567890"
+          }
+        }
+      ],
+      "error": {
+        "not-in-group": "User is not in the group.",
+        "super-admin": "Cannot kick the group's main admin.",
+        "already-admin": "User is already an admin.",
+        "not-admin": "User is not an admin."
+      },
+      "message": {
+        "success": {
+          "kick": "Successfully kicked @{number} from the group.",
+          "promote": "Successfully promoted @{number} to group admin.",
+          "demote": "Successfully demoted @{number} from admin."
+        }
+      }
+    },
+    "fun-pertanyaan": {
+      "name": "Random Question",
+      "description": "Answer a random question.",
+      "arguments": [
+        {
+          "type": "string",
+          "name": "question",
+          "description": "The question you want to ask."
+        }
+      ],
+      "message": {
+        "time": "_{duration} {timeFormat} left..._",
+        "chance": {
+          "yes": "Yes.",
+          "no": "No.",
+          "maybe": "Maybe.",
+          "ofcourse": "Of course.",
+          "ofcourseNot": "Of course not.",
+          "unknown": "I don't know.",
+          "askAgain": "Ask again later.",
+          "bigChanceYes": "Most likely yes.",
+          "lowChanceYes": "Small chance yes.",
+          "bigChanceNo": "Most likely no.",
+          "lowChanceNo": "Small chance no.",
+          "askSomeoneElse": "Ask someone else.",
+          "askYourself": "Ask yourself.",
+          "askGod": "Ask God.",
+          "askUniverse": "Ask the universe."
+        }
+      }
+    },
+    "eval": {
+      "name": "Evaluate Code",
+      "description": "Evaluate JavaScript code.",
+      "usageDescription": "Usage: `> <code>`"
+    },
+    "sticker": {
+      "name": "Sticker Maker",
+      "description": "Create stickers from images or videos.",
+      "usageDescription": "Usage: Send or reply to an image/video with this command.",
+      "error": {
+        "invalid": "Provided media is invalid. Please send or reply with an image or video."
+      }
+    },
+    "rpg": {
+      "name": "RPG",
+      "description": "A simple RPG game.",
+      "message": {
+        "notHave": "Don't have",
+        "cooldown": "You already performed *{type}* today. Please try again in _{time}_"
+      }
+    },
+    "rpg-inv": {
+      "name": "Inventory",
+      "description": "Show your RPG inventory.",
+      "message": {
+        "empty": "Your inventory is empty.",
+        "title": "Inventory *{name}*",
+        "myHero": "My Hero",
+        "achievement": "Achievement",
+        "achievementLine": "{index}. Top {name} *{position}* of *{count}*",
+        "item": {
+          "name": "Name",
+          "amount": "Amount",
+          "description": "Description"
+        }
+      },
+      "names": {
+        "progress": "Progress",
+        "level": "Level",
+        "exp": "EXP",
+        "limit": "Limit",
+        "stats": {
+          "health": "Health",
+          "armor": "Armor"
+        },
+        "pet": {
+          "name": "Pet",
+          "cat": "Cat",
+          "dog": "Dog",
+          "fox": "Fox",
+          "wolf": "Wolf",
+          "dragon": "Dragon",
+          "horse": "Horse",
+          "phoenix": "Phoenix",
+          "griffin": "Griffin",
+          "kyubi": "Kyubi",
+          "centaur": "Centaur"
+        },
+        "crate": {
+          "name": "Crate",
+          "box": "Box",
+          "common": "Common",
+          "uncommon": "Uncommon",
+          "mythic": "Mythic",
+          "legendary": "Legendary",
+          "pet": "Pet",
+          "garden": "Garden"
+        },
+        "food": {
+          "name": "Food",
+          "pet": "Pet"
+        },
+        "fruits": {
+          "name": "Fruits",
+          "grapes": "Grapes",
+          "oranges": "Oranges",
+          "apples": "Apples",
+          "mangoes": "Mangoes",
+          "bananas": "Bananas"
+        },
+        "seeds": "Seeds",
+        "trashMan": {
+          "name": "Trash Collector",
+          "cardboard": "Cardboard",
+          "bottle": "Bottle",
+          "can": "Can"
+        },
+        "economy": {
+          "name": "Economy",
+          "bank": "Bank",
+          "money": "Money",
+          "coupon": "Coupon",
+          "ticket": "Ticket",
+          "coin": "Coin"
+        },
+        "weapons": {
+          "name": "Weapons",
+          "sword": "Sword"
+        },
+        "material": {
+          "name": "Material",
+          "string": "String",
+          "can": "Can",
+          "wood": "Wood",
+          "rock": "Rock",
+          "iron": "Iron",
+          "diamond": "Diamond",
+          "gold": "Gold"
+        },
+        "hero": "Hero"
+      }
+    },
+    "rpg-adventure": {
+      "name": "Adventure",
+      "description": "Start an RPG adventure.",
+      "message": {
+        "success": "You successfully completed an adventure at *{place}*.",
+        "rareCrate": "Congratulations! You found a *Rare Crate*!"
+      }
+    },
+    "rpg-bossraid": {
+      "name": "Boss Raid",
+      "usageDescription": "Usage: bosraid <easy|normal|hard>\nExample: bosraid easy",
+      "type": "rpg",
+      "description": "Fight world bosses using pets for rewards.",
+      "arguments": [
+        { "name": "mode", "optional": false, "description": "Raid difficulty: easy, normal, or hard", "error": { "blank": "Mode is required.", "invalid": "Mode must be one of: easy, normal, hard." } }
+      ],
+      "message": {
+        "cooldown": "Boss raid cooldown. Wait {time}",
+        "needPetsEasy": "You need pets (cat, horse, fox) level 5+ to run easy bossraid.",
+        "needPetsNormal": "You need pets (griffin, phoenix, wolf) level 7+ to run normal bossraid.",
+        "needPetsHard": "You need pets (dragon, kyubi, centaur) level 10+ to run hard bossraid.",
+        "success": {
+          "easy": "Boss defeated (easy). Pets lost: -{lost}. Exp +{exp}. Money +{money}",
+          "normal": "Boss defeated (normal). Pets lost: -{lost}. Exp +{exp}. Money +{money}",
+          "hard": "Boss defeated (hard). Pets lost: -{lost}. Exp +{exp}. Money +{money}"
+        }
+      }
+    },
+    "rpg-killmonster": {
+      "name": "Kill Monster",
+      "usageDescription": "Usage: kill monster",
+      "type": "rpg",
+      "description": "Fight wild monsters for loot and EXP.",
+      "arguments": [
+        { "name": "target", "optional": false, "description": "Type the literal 'monster' to start", "error": { "blank": "Specify target 'monster'." } }
+      ],
+      "message": {
+        "lowHealth": "You need at least 80 health to fight a monster.",
+        "needTicket": "You need 100 tickets to fight a monster.",
+        "result": "You defeated the monster. You lose {lost} HP. Exp +{exp}. Money +{money}. Potion +{potion}"
+      }
+    },
+    "rpg-leaderboard": {
+      "name": "Leaderboard",
+      "usageDescription": "Usage: leaderboard [count]",
+      "type": "rpg",
+      "description": "Show top players by EXP, level, or money.",
+      "arguments": [
+        { "name": "count", "optional": true, "description": "Number of entries to show (default 10)", "error": { "invalid": "Count must be a number." } }
+      ],
+      "message": {
+        "header": "RPG Leaderboards Top {len}",
+        "exp": "Top EXP:",
+        "level": "Top Level:",
+        "money": "Top Money:"
+      }
+    },
+    "rpg-transfer": {
+      "name": "Transfer",
+      "usageDescription": "Usage: transfer <type> <amount> @tag\nExample: transfer money 100 @user",
+      "type": "rpg",
+      "description": "Transfer resources between users in a group.",
+      "arguments": [
+        { "name": "type", "optional": false, "description": "money | exp | limit", "error": { "blank": "Type required.", "invalid": "Unknown type." } },
+        { "name": "amount", "optional": false, "description": "Amount to transfer", "error": { "blank": "Amount required.", "invalid": "Amount must be a number." } },
+        { "name": "user", "optional": false, "description": "Mention the recipient user", "error": { "blank": "You must mention a recipient." } }
+      ],
+      "message": {
+        "groupOnly": "This command only works in groups.",
+        "noTag": "You must tag a user to transfer to.",
+        "notEnoughMoney": "You don't have enough money.",
+        "notEnoughExp": "You don't have enough EXP.",
+        "success": {
+          "money": "Transfer success: {count} money",
+          "exp": "Transfer success: {count} exp"
+        }
+      }
+    },
+    "rpg-ramuan": {
+      "name": "Pet Potion",
+      "usageDescription": "Usage: ramuan <pet>\nExample: ramuan kucing",
+      "type": "rpg",
+      "description": "Give potions to pets to gain pet EXP.",
+      "arguments": [
+        { "name": "pet", "optional": false, "description": "Pet type (kucing, kuda, rubah, etc.)", "error": { "blank": "Pet type required.", "invalid": "Unknown pet type." } }
+      ],
+      "message": {
+        "noPotion": "You don't have any potions.",
+        "unknownPet": "Unknown pet.",
+        "success": "You gave a potion to {pet}."
+      }
+    },
+    "rpg-shopfish": {
+      "name": "Fish Shop",
+      "usageDescription": "Usage: shopfish <buy|sell> <item> <amount>\nExample: shopfish buy hiu 1",
+      "type": "rpg",
+      "description": "Buy and sell fish items at the market.",
+      "arguments": [
+        { "name": "action", "optional": false, "description": "buy or sell", "error": { "blank": "Action required.", "invalid": "Action must be 'buy' or 'sell'." } },
+        { "name": "item", "optional": false, "description": "Item key (hiu, ikan, dory...)", "error": { "blank": "Item required.", "invalid": "Unknown item." } },
+        { "name": "amount", "optional": true, "description": "Quantity (default 1)", "error": { "invalid": "Amount must be a number." } }
+      ],
+      "message": {
+        "unknownItem": "Unknown item {item}.",
+        "notEnoughMoney": "You don't have enough money.",
+        "notHaveItem": "You don't have enough {item}.",
+        "bought": "Bought {count} {item} for {cost}.",
+        "sold": "Sold {count} {item} for {gain}."
+      }
+    },
+    "rpg-autolevelup": {
+      "type": "rpg",
+      "name": "Auto Level Up",
+      "usageDescription": "Auto: automatically levels up when XP threshold reached.",
+      "description": "Automatically level up when XP thresholds are met.",
+      "message": {
+        "leveled": "You auto-leveled +{leveled}. Now level {level}."
+      }
+    },
+    "rpg-heal": {
+      "name": "Heal",
+      "description": "Heal yourself.",
+      "message": {
+        "potionNotEnough": "You do not have enough *{amount}* potions to heal yourself.",
+        "success": "Successfully healed yourself for *{amount}* HP using *{amount}* potions."
+      }
+    },
+    "rpg-hunt": {
+      "name": "Hunt",
+      "description": "Hunt monsters to gain EXP and money.",
+      "message": {
+        "success": "You successfully killed *{monster}* and gained *{exp}* EXP, *{money}*, and lost *{healthCost}* HP.",
+        "death": "You have died from an attack by *{killer}*. You lost all your money and your HP was reset.",
+        "deathPenalty": "You dropped to level *{level}*, and lost all EXP."
+      }
+    },
+    "rpg-levelup": {
+      "name": "Level Up",
+      "message": {
+        "cantLevel": "Level *{level} ({curr}/{xp})*\nNeed *{needed}* more!",
+        "success": "Congratulations {name}\n• 🧬Previous Level: {prevLevel}\n• 🧬New Level: {newLevel}\n• 🧬Your Role: {role}\n• At: {time}\n*_The more you interact with the bot, the higher your level_*"
+      }
     }
   }
 }

@@ -171,6 +171,10 @@
       "description": "Menampilkan inventaris RPG Anda.",
       "message": {
         "empty": "Inventaris Anda kosong.",
+        "title": "Inventaris *{name}*",
+        "myHero": "Hero Saya",
+        "achievement": "Pencapaian",
+        "achievementLine": "{index}. Top {name} *{position}* dari *{count}*",
         "item": {
           "name": "Nama",
           "amount": "Jumlah",
@@ -261,6 +265,164 @@
         "rareCrate": "Selamat! Anda menemukan sebuah *Rare Crate*!"
       }
     },
+    "rpg-bossraid": {
+      "name": "Bos Raid",
+      "usageDescription": "Cara pakai: bosraid <easy|normal|hard>\nContoh: bosraid easy",
+      "type": "rpg",
+      "description": "Bertarung melawan bos dunia menggunakan pet untuk hadiah.",
+      "arguments": [
+        {
+          "name": "mode",
+          "optional": false,
+          "description": "Kesulitan raid: easy, normal, atau hard",
+          "error": {
+            "blank": "Mode diperlukan.",
+            "invalid": "Mode harus salah satu dari: easy, normal, hard."
+          }
+        }
+      ],
+      "message": {
+        "cooldown": "Cooldown bos raid. Tunggu {time}",
+        "needPetsEasy": "Butuh pet (kucing, kuda, rubah) level 5+ untuk bosraid easy.",
+        "needPetsNormal": "Butuh pet (griffin, phonix, serigala) level 7+ untuk bosraid normal.",
+        "needPetsHard": "Butuh pet (naga, kyubi, centaur) level 10+ untuk bosraid hard.",
+        "success": {
+          "easy": "Bos kalah (easy). Pet turun: -{lost}. Exp +{exp}. Uang +{money}",
+          "normal": "Bos kalah (normal). Pet turun: -{lost}. Exp +{exp}. Uang +{money}",
+          "hard": "Bos kalah (hard). Pet turun: -{lost}. Exp +{exp}. Uang +{money}"
+        }
+      }
+    },
+    "rpg-killmonster": {
+      "name": "Bunuh Monster",
+      "usageDescription": "Gunakan: kill monster",
+      "type": "rpg",
+      "description": "Bertarung melawan monster liar untuk loot dan EXP.",
+      "arguments": [
+        {
+          "name": "target",
+          "optional": false,
+          "description": "Ketik literal 'monster' untuk memulai",
+          "error": { "blank": "Tentukan target 'monster'." }
+        }
+      ],
+      "message": {
+        "lowHealth": "Butuh minimal 80 nyawa untuk lawan monster.",
+        "needTicket": "Butuh 100 tiket untuk lawan monster.",
+        "result": "Kalahkan monster. Nyawa -{lost}. Exp +{exp}. Uang +{money}. Potion +{potion}"
+      }
+    },
+    "rpg-leaderboard": {
+      "name": "Papan Peringkat",
+      "usageDescription": "Cara pakai: leaderboard [jumlah]",
+      "type": "rpg",
+      "description": "Menampilkan peringkat pemain berdasarkan EXP, level, atau uang.",
+      "arguments": [
+        {
+          "name": "jumlah",
+          "optional": true,
+          "description": "Jumlah entri yang ditampilkan (default 10)"
+        }
+      ],
+      "message": {
+        "header": "Papan Peringkat RPG Top {len}",
+        "exp": "Top EXP:",
+        "level": "Top Level:",
+        "money": "Top Uang:"
+      }
+    },
+    "rpg-transfer": {
+      "name": "Transfer",
+      "usageDescription": "Cara pakai: transfer <type> <jumlah> @tag\nContoh: transfer money 100 @user",
+      "type": "rpg",
+      "description": "Transfer resource antar pengguna di grup.",
+      "arguments": [
+        {
+          "name": "type",
+          "optional": false,
+          "description": "money | exp | limit",
+          "error": { "blank": "Tipe diperlukan.", "invalid": "Tipe tidak dikenal." }
+        },
+        {
+          "name": "jumlah",
+          "optional": false,
+          "description": "Jumlah yang akan ditransfer",
+          "error": { "blank": "Jumlah diperlukan.", "invalid": "Jumlah harus berupa angka." }
+        },
+        {
+          "name": "user",
+          "optional": false,
+          "description": "Tag pengguna penerima",
+          "error": { "blank": "Anda harus menandai penerima." }
+        }
+      ],
+      "message": {
+        "groupOnly": "Perintah ini hanya untuk grup.",
+        "noTag": "Tag pengguna yang ingin ditransfer.",
+        "notEnoughMoney": "Uangmu tidak cukup.",
+        "notEnoughExp": "EXP mu tidak cukup.",
+        "success": {
+          "money": "Berhasil transfer {count} uang",
+          "exp": "Berhasil transfer {count} exp"
+        }
+      }
+    },
+    "rpg-ramuan": {
+      "name": "Ramuan Pet",
+      "usageDescription": "Cara pakai: ramuan <pet>\nContoh: ramuan kucing",
+      "type": "rpg",
+      "description": "Memberi ramuan ke pet untuk EXP pet.",
+      "arguments": [
+        { "name": "pet", "optional": false, "description": "Tipe pet (kucing, kuda, rubah, dll.)" }
+      ],
+      "message": {
+        "noPotion": "Kamu tidak punya ramuan.",
+        "unknownPet": "Pet tidak dikenal.",
+        "success": "Berhasil memberi ramuan ke {pet}."
+      }
+    },
+    "rpg-shopfish": {
+      "name": "Toko Ikan",
+      "usageDescription": "Cara pakai: shopfish <buy|sell> <item> <jumlah>\nContoh: shopfish buy hiu 1",
+      "type": "rpg",
+      "description": "Beli dan jual item hasil memancing di pasar.",
+      "arguments": [
+        {
+          "name": "aksi",
+          "optional": false,
+          "description": "buy atau sell",
+          "error": { "blank": "Aksi diperlukan.", "invalid": "Aksi harus 'buy' atau 'sell'." }
+        },
+        {
+          "name": "item",
+          "optional": false,
+          "description": "Kunci item (hiu, ikan, dory...)",
+          "error": { "blank": "Item diperlukan.", "invalid": "Item tidak dikenal." }
+        },
+        {
+          "name": "jumlah",
+          "optional": true,
+          "description": "Jumlah (default 1)",
+          "error": { "invalid": "Jumlah harus berupa angka." }
+        }
+      ],
+      "message": {
+        "unknownItem": "Item tidak dikenal {item}.",
+        "notEnoughMoney": "Uangmu tidak cukup.",
+        "notHaveItem": "Kamu tidak punya cukup {item}.",
+        "bought": "Berhasil beli {count} {item} seharga {cost}.",
+        "sold": "Berhasil jual {count} {item} seharga {gain}."
+      }
+    },
+    "rpg-autolevelup": {
+      "name": "Auto Naik Level",
+      "usageDescription": "Otomatis: naik level ketika XP mencukupi.",
+      "type": "rpg",
+      "description": "Naik level otomatis saat EXP mencukupi.",
+      "message": {
+        "leveled": "Otomatis naik level +{leveled}. Sekarang level {level}."
+      }
+    },
     "rpg-heal": {
       "name": "Menyembuhkan",
       "description": "Menyembuhkan diri sendiri.",
@@ -276,6 +438,13 @@
         "success": "Anda berhasil membunuh *{monster}* dan mendapatkan *{exp}* EXP, *{money}*, dan kehilangan *{healthCost}* HP.",
         "death": "Anda telah mati karena diserang oleh *{killer}*. Anda kehilangan semua uang dan HP Anda tereset.",
         "deathPenalty": "Anda turun ke level *{level}*, dan kehilangan semua EXP."
+      }
+    },
+    "rpg-levelup": {
+      "name": "Naik Level",
+      "message": {
+        "cantLevel": "Level *{level} ({curr}/{xp})*\nKurang *{needed}* lagi!",
+        "success": "Selamat {name}\n• 🧬Level Sebelumnya : {prevLevel}\n• 🧬Level Baru : {newLevel}\n• 🧬Role Kamu : {role}\n• Pada Jam : {time}\n*_Semakin sering berinteraksi dengan bot Semakin Tinggi level kamu_*"
       }
     }
   }
