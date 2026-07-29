@@ -36,7 +36,7 @@ export async function onMessage(m) {
 
       const _prefix = Plugin.prefix ? Plugin.prefix : prefix
       options.match = (
-        _prefix instanceof RegExp // RegExp Mode? 
+        _prefix instanceof RegExp // RegExp Mode?
           ? [[_prefix.exec(m.text), _prefix]]
           : Array.isArray(_prefix) // Array?
             ? _prefix.map((p) => {
