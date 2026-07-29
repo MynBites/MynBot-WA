@@ -10,7 +10,11 @@ import {
 } from '@whiskeysockets/baileys'
 import Db from 'mongodb'
 
-type CustomPermission = (this: WASocket, message?: WebMessageInfo, options?: Options) => boolean | Promise<boolean>
+type CustomPermission = (
+  this: WASocket,
+  message?: WebMessageInfo,
+  options?: Options,
+) => boolean | Promise<boolean>
 
 type Permissions =
   | 'rowner'

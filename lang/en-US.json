@@ -269,7 +269,15 @@
       "type": "rpg",
       "description": "Fight world bosses using pets for rewards.",
       "arguments": [
-        { "name": "mode", "optional": false, "description": "Raid difficulty: easy, normal, or hard", "error": { "blank": "Mode is required.", "invalid": "Mode must be one of: easy, normal, hard." } }
+        {
+          "name": "mode",
+          "optional": false,
+          "description": "Raid difficulty: easy, normal, or hard",
+          "error": {
+            "blank": "Mode is required.",
+            "invalid": "Mode must be one of: easy, normal, hard."
+          }
+        }
       ],
       "message": {
         "cooldown": "Boss raid cooldown. Wait {time}",
@@ -289,7 +297,12 @@
       "type": "rpg",
       "description": "Fight wild monsters for loot and EXP.",
       "arguments": [
-        { "name": "target", "optional": false, "description": "Type the literal 'monster' to start", "error": { "blank": "Specify target 'monster'." } }
+        {
+          "name": "target",
+          "optional": false,
+          "description": "Type the literal 'monster' to start",
+          "error": { "blank": "Specify target 'monster'." }
+        }
       ],
       "message": {
         "lowHealth": "You need at least 80 health to fight a monster.",
@@ -303,7 +316,12 @@
       "type": "rpg",
       "description": "Show top players by EXP, level, or money.",
       "arguments": [
-        { "name": "count", "optional": true, "description": "Number of entries to show (default 10)", "error": { "invalid": "Count must be a number." } }
+        {
+          "name": "count",
+          "optional": true,
+          "description": "Number of entries to show (default 10)",
+          "error": { "invalid": "Count must be a number." }
+        }
       ],
       "message": {
         "header": "RPG Leaderboards Top {len}",
@@ -318,9 +336,24 @@
       "type": "rpg",
       "description": "Transfer resources between users in a group.",
       "arguments": [
-        { "name": "type", "optional": false, "description": "money | exp | limit", "error": { "blank": "Type required.", "invalid": "Unknown type." } },
-        { "name": "amount", "optional": false, "description": "Amount to transfer", "error": { "blank": "Amount required.", "invalid": "Amount must be a number." } },
-        { "name": "user", "optional": false, "description": "Mention the recipient user", "error": { "blank": "You must mention a recipient." } }
+        {
+          "name": "type",
+          "optional": false,
+          "description": "money | exp | limit",
+          "error": { "blank": "Type required.", "invalid": "Unknown type." }
+        },
+        {
+          "name": "amount",
+          "optional": false,
+          "description": "Amount to transfer",
+          "error": { "blank": "Amount required.", "invalid": "Amount must be a number." }
+        },
+        {
+          "name": "user",
+          "optional": false,
+          "description": "Mention the recipient user",
+          "error": { "blank": "You must mention a recipient." }
+        }
       ],
       "message": {
         "groupOnly": "This command only works in groups.",
@@ -339,7 +372,12 @@
       "type": "rpg",
       "description": "Give potions to pets to gain pet EXP.",
       "arguments": [
-        { "name": "pet", "optional": false, "description": "Pet type (kucing, kuda, rubah, etc.)", "error": { "blank": "Pet type required.", "invalid": "Unknown pet type." } }
+        {
+          "name": "pet",
+          "optional": false,
+          "description": "Pet type (kucing, kuda, rubah, etc.)",
+          "error": { "blank": "Pet type required.", "invalid": "Unknown pet type." }
+        }
       ],
       "message": {
         "noPotion": "You don't have any potions.",
@@ -353,9 +391,24 @@
       "type": "rpg",
       "description": "Buy and sell fish items at the market.",
       "arguments": [
-        { "name": "action", "optional": false, "description": "buy or sell", "error": { "blank": "Action required.", "invalid": "Action must be 'buy' or 'sell'." } },
-        { "name": "item", "optional": false, "description": "Item key (hiu, ikan, dory...)", "error": { "blank": "Item required.", "invalid": "Unknown item." } },
-        { "name": "amount", "optional": true, "description": "Quantity (default 1)", "error": { "invalid": "Amount must be a number." } }
+        {
+          "name": "action",
+          "optional": false,
+          "description": "buy or sell",
+          "error": { "blank": "Action required.", "invalid": "Action must be 'buy' or 'sell'." }
+        },
+        {
+          "name": "item",
+          "optional": false,
+          "description": "Item key (hiu, ikan, dory...)",
+          "error": { "blank": "Item required.", "invalid": "Unknown item." }
+        },
+        {
+          "name": "amount",
+          "optional": true,
+          "description": "Quantity (default 1)",
+          "error": { "invalid": "Amount must be a number." }
+        }
       ],
       "message": {
         "unknownItem": "Unknown item {item}.",
